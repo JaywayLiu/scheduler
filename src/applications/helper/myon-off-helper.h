@@ -52,7 +52,7 @@ public:
    * \param address the address of the remote node to send traffic
    *        to.
    */
-  MyOnOffHelper (std::string protocol, Address lteaddress, Address wifiaddress);
+  MyOnOffHelper (std::string protocol, uint16_t ltelocalport, Address lteaddress, uint16_t wifilocalport, Address wifiaddress);
 
   /**
    * Helper function used to set the underlying application attributes.

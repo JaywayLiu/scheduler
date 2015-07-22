@@ -23,18 +23,23 @@
 #include "ns3/string.h"
 #include "ns3/data-rate.h"
 #include "ns3/uinteger.h"
+#include "ns3/double.h"
 #include "ns3/names.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/myonoff-application.h"
 
 namespace ns3 {
 
-MyOnOffHelper::MyOnOffHelper (std::string protocol, Address lteaddress, Address wifiaddress)
+MyOnOffHelper::MyOnOffHelper (std::string protocol, uint16_t ltelocalport, Address lteaddress, uint16_t wifilocalport, Address wifiaddress)
 {
   m_factory.SetTypeId ("ns3::MyOnOffApplication");
   m_factory.Set ("Protocol", StringValue (protocol));
   m_factory.Set ("LteRemote", AddressValue (lteaddress));
   m_factory.Set ("WifiRemote", AddressValue (wifiaddress));
+  m_factory.Set ("LteLocalPort", UintegerValue(ltelocalport));
+  m_factory.Set ("WifiLocalPort", UintegerValue(wifilocalport));
+  //m_factory.Set ("RunTime", DoubleValue(run));
+  //m_factory.Set ("EndTime", DoubleValue(end));
 }
 
 void 

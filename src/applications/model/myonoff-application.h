@@ -122,6 +122,7 @@ public:
   int64_t AssignStreams (int64_t stream);
 
   int SwitchNetwork(); //return the connection type after the switch
+  int SetNetwork(int onnet);//0 to LTE and otherwise to WiFi
 
 protected:
   virtual void DoDispose (void);
@@ -172,7 +173,11 @@ private:
   //EventId         m_startStopEvent;     //!< Event id for next start or stop event
   EventId         m_sendEvent;    //!< Event id of pending "send packet" event
   TypeId          m_tid;          //!< Type of the socket used
-
+  uint32_t        m_txseq;
+  uint16_t        m_lte_local_port;
+  uint16_t        m_wifi_local_port;
+  //double          m_run_time;
+  //double          m_end_time;
   /// Traced Callback: transmitted packets.
   TracedCallback<Ptr<const Packet> > m_txTrace;
 

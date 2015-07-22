@@ -36,6 +36,7 @@
 #include "ns3/socket-factory.h"
 #include "ns3/packet.h"
 #include "ns3/uinteger.h"
+#include "ns3/double.h"
 #include "ns3/trace-source-accessor.h"
 #include "myonoff-application.h"
 #include "ns3/udp-socket-factory.h"
@@ -71,14 +72,22 @@ MyOnOffApplication::GetTypeId (void)
                    AddressValue (),
                    MakeAddressAccessor (&MyOnOffApplication::m_wifi_peer),
                    MakeAddressChecker ())
-    /*.AddAttribute ("OnTime", "A RandomVariableStream used to pick the duration of the 'On' state.",
-                   StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"),
-                   MakePointerAccessor (&OnOffApplication::m_onTime),
-                   MakePointerChecker <RandomVariableStream>())
-    .AddAttribute ("OffTime", "A RandomVariableStream used to pick the duration of the 'Off' state.",
-                   StringValue ("ns3::ConstantRandomVariable[Constant=1.0]"),
-                   MakePointerAccessor (&OnOffApplication::m_offTime),
-                   MakePointerChecker <RandomVariableStream>())*/
+    .AddAttribute ("LteLocalPort", "The local port for LTE flow",
+                   UintegerValue (0),
+                   MakeUintegerAccessor (&MyOnOffApplication::m_lte_local_port),
+                   MakeUintegerChecker<uint16_t> ())
+    .AddAttribute ("WifiLocalPort", "The local port for WiFi flow",
+                   UintegerValue (0),
+                   MakeUintegerAccessor (&MyOnOffApplication::m_wifi_local_port),
+                   MakeUintegerChecker<uint16_t> ())
+    /*.AddAttribute ("RunTime", "The Packet Send Start Time",
+                   DoubleValue (0),
+                   MakeDoubleAccessor (&MyOnOffApplication::m_run_time),
+                   MakeDoubleChecker<double> ())
+    .AddAttribute ("EndTime", "The Packet Send End Time",
+                   DoubleValue (10000),
+                   MakeDoubleAccessor (&MyOnOffApplication::m_end_time),
+                   MakeDoubleChecker<double> ())//*/
     .AddAttribute ("MaxBytes", 
                    "The total number of bytes to send. Once these bytes are sent, "
                    "no packet is sent again, even in on state. The value zero means "
@@ -108,7 +117,8 @@ MyOnOffApplication::MyOnOffApplication ()
     m_lte_residualBits (0),
     m_wifi_residualBits (0),
     m_lastStartTime (Seconds (0)),
-    m_totBytes (0)
+    m_totBytes (0),
+    m_txseq (0)
 {
   NS_LOG_FUNCTION (this);
 }
@@ -164,6 +174,8 @@ void MyOnOffApplication::StartApplication () // Called at time specified by Star
 {
   NS_LOG_FUNCTION (this);
 
+  //std::cout<<"LTE port"<<m_lte_local_port<<" ";
+  //std::cout<<"WiFi port"<<m_wifi_local_port<<std::endl;
   // Create the socket if not already
   if (!m_lte_socket)
     {
@@ -175,7 +187,7 @@ void MyOnOffApplication::StartApplication () // Called at time specified by Star
       else if (InetSocketAddress::IsMatchingType (m_lte_peer) ||
                PacketSocketAddress::IsMatchingType (m_lte_peer))
         {
-          m_lte_socket->Bind ();
+          m_lte_socket->Bind (InetSocketAddress(Ipv4Address::GetAny(),m_lte_local_port));
         }
       m_lte_socket->Connect (m_lte_peer);
       m_lte_socket->SetAllowBroadcast (true);
@@ -196,7 +208,7 @@ void MyOnOffApplication::StartApplication () // Called at time specified by Star
       else if (InetSocketAddress::IsMatchingType (m_wifi_peer) ||
                PacketSocketAddress::IsMatchingType (m_wifi_peer))
         {
-          m_wifi_socket->Bind ();
+          m_wifi_socket->Bind (InetSocketAddress(Ipv4Address::GetAny(),m_wifi_local_port));
         }
       m_wifi_socket->Connect (m_wifi_peer);
       m_wifi_socket->SetAllowBroadcast (true);
@@ -208,6 +220,7 @@ void MyOnOffApplication::StartApplication () // Called at time specified by Star
     }
   m_cbrRateFailSafe = m_cbrRate;
 
+ //std::cout<<"App Rate: "<<m_cbrRate.GetBitRate ()<<std::endl;
   // Insure no pending event
   CancelEvents ();
 
@@ -217,8 +230,6 @@ void MyOnOffApplication::StartApplication () // Called at time specified by Star
   m_current_socket = m_lte_socket;
   // If we are not yet connected, there is nothing to do here
   // The ConnectionComplete upcall will start timers at that time
-  //if (!m_connected) return;
-  //ScheduleStartEvent ();
   StartSending();
 }
 
@@ -263,7 +274,6 @@ void MyOnOffApplication::CancelEvents ()
     }
   m_cbrRateFailSafe = m_cbrRate;
   Simulator::Cancel (m_sendEvent);
-  //Simulator::Cancel (m_startStopEvent);
 }
 
 // Event handlers
@@ -272,14 +282,12 @@ void MyOnOffApplication::StartSending ()
   NS_LOG_FUNCTION (this);
   m_lastStartTime = Simulator::Now ();
   ScheduleNextTx ();  // Schedule the send packet event
-  //ScheduleStopEvent ();
 }
 
 void MyOnOffApplication::StopSending ()
 {
   NS_LOG_FUNCTION (this);
   CancelEvents ();
-  //ScheduleStartEvent ();
 }
 
 // Private helpers
@@ -295,11 +303,12 @@ void MyOnOffApplication::ScheduleNextTx ()
       else
         bits = m_pktSize * 8 - m_wifi_residualBits;
       NS_LOG_LOGIC ("bits = " << bits);
+      
       Time nextTime (Seconds (bits /
                               static_cast<double>(m_cbrRate.GetBitRate ()))); // Time till next packet
       NS_LOG_LOGIC ("nextTime = " << nextTime);
-      m_sendEvent = Simulator::Schedule (nextTime,
-                                         &MyOnOffApplication::SendPacket, this);
+      m_sendEvent = Simulator::Schedule (nextTime, &MyOnOffApplication::SendPacket, this);
+      
     }
   else
     { // All done, cancel any pending events
@@ -307,79 +316,80 @@ void MyOnOffApplication::ScheduleNextTx ()
     }
 }
 
-/*
-void OnOffApplication::ScheduleStartEvent ()
-{  // Schedules the event to start sending data (switch to the "On" state)
-  NS_LOG_FUNCTION (this);
-
-  Time offInterval = Seconds (m_offTime->GetValue ());
-  NS_LOG_LOGIC ("start at " << offInterval);
-  m_startStopEvent = Simulator::Schedule (offInterval, &OnOffApplication::StartSending, this);
-}
-
-void OnOffApplication::ScheduleStopEvent ()
-{  // Schedules the event to stop sending data (switch to "Off" state)
-  NS_LOG_FUNCTION (this);
-
-  Time onInterval = Seconds (m_onTime->GetValue ());
-  NS_LOG_LOGIC ("stop at " << onInterval);
-  m_startStopEvent = Simulator::Schedule (onInterval, &OnOffApplication::StopSending, this);
-}//*/
 
 
 void MyOnOffApplication::SendPacket ()
 {
   NS_LOG_FUNCTION (this);
+  //double currentTime = Simulator::Now().GetSeconds();
+  //if(currentTime >= m_run_time && currentTime <m_end_time){
+  
+        NS_ASSERT (m_sendEvent.IsExpired ());
+        Ptr<Packet> packet = Create<Packet> (m_pktSize);
+        m_txTrace (packet);
+        m_current_socket->Send(packet);
+        m_totBytes += m_pktSize;
+        if (InetSocketAddress::IsMatchingType (m_current_peer))
+        {
+                NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
+                           << "s on-off application sent "
+                           <<  packet->GetSize () << " bytes to "
+                           << InetSocketAddress::ConvertFrom(m_current_peer).GetIpv4 ()
+                           << " port " << InetSocketAddress::ConvertFrom (m_current_peer).GetPort ()
+                           << " total Tx " << m_totBytes << " bytes");
+        }
+        else if (Inet6SocketAddress::IsMatchingType (m_current_peer))
+        {
+                NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
+                           << "s on-off application sent "
+                           <<  packet->GetSize () << " bytes to "
+                           << Inet6SocketAddress::ConvertFrom(m_current_peer).GetIpv6 ()
+                           << " port " << Inet6SocketAddress::ConvertFrom (m_current_peer).GetPort ()
+                           << " total Tx " << m_totBytes << " bytes");
+        }
+        m_lastStartTime = Simulator::Now ();
+        if(m_current_on == 0)
+            m_lte_residualBits = 0;
+        else
+            m_wifi_residualBits = 0;
 
-  NS_ASSERT (m_sendEvent.IsExpired ());
-  Ptr<Packet> packet = Create<Packet> (m_pktSize);
-  m_txTrace (packet);
-  m_current_socket->Send(packet);
-  m_totBytes += m_pktSize;
-  if (InetSocketAddress::IsMatchingType (m_current_peer))
-    {
-      NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
-                   << "s on-off application sent "
-                   <<  packet->GetSize () << " bytes to "
-                   << InetSocketAddress::ConvertFrom(m_current_peer).GetIpv4 ()
-                   << " port " << InetSocketAddress::ConvertFrom (m_current_peer).GetPort ()
-                   << " total Tx " << m_totBytes << " bytes");
-    }
-  else if (Inet6SocketAddress::IsMatchingType (m_current_peer))
-    {
-      NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
-                   << "s on-off application sent "
-                   <<  packet->GetSize () << " bytes to "
-                   << Inet6SocketAddress::ConvertFrom(m_current_peer).GetIpv6 ()
-                   << " port " << Inet6SocketAddress::ConvertFrom (m_current_peer).GetPort ()
-                   << " total Tx " << m_totBytes << " bytes");
-    }
-  m_lastStartTime = Simulator::Now ();
-  if(m_current_on == 0)
-    m_lte_residualBits = 0;
-  else
-    m_wifi_residualBits = 0;
+        m_txseq++;
+        //std::cout<<" send bytes = "<<packet->GetSize ()<<" time "<<Simulator::Now()<<" to "<<InetSocketAddress::ConvertFrom(m_current_peer).GetIpv4 () << " total Tx " << m_totBytes<<" txseq "<<m_txseq<<std::endl;
+  //}
   ScheduleNextTx ();
 }
 
 int MyOnOffApplication::SwitchNetwork()
 {
-  std::cout<<"change"<<std::endl;
+  //std::cout<<"change to ";
   StopSending();//first stop current sending
-  if(m_current_on ==0 )
+  if(m_current_on == 0 )
     {
       m_current_on = 1;
       m_current_socket = m_wifi_socket;
       m_current_peer= m_wifi_peer;
+      //std::cout<<"WiFi"<<std::endl;
    }
   else
    {
       m_current_on = 0;
       m_current_socket = m_lte_socket;
       m_current_peer= m_lte_peer;
+      //std::cout<<"LTE"<<std::endl;
    }
    StartSending();
    return m_current_on;
+}
+
+
+int MyOnOffApplication::SetNetwork(int onnet){
+  if(onnet >=1)
+     onnet =1;// all values larger than 1 means wifi
+ 
+  if(onnet != m_current_on){
+     SwitchNetwork();
+  }
+  return m_current_on;
 }
 
 void MyOnOffApplication::ConnectionSucceeded (Ptr<Socket> socket)
