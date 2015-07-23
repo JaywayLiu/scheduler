@@ -63,7 +63,7 @@ main (int argc, char *argv[])
  
   uint16_t nEnbs = 1;
   uint16_t nWiFiAPs = 4;
-  uint16_t nUesPerWiFiAp = 5;
+  uint16_t nUesPerWiFiAp = 4;
   
   double simTime = 50.1;
   double distance = 1000.0;
@@ -239,7 +239,7 @@ main (int argc, char *argv[])
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO); 
 
   for(int i=0; i<nWiFiAPs; i++){
-    controller->setAPCap(i,3000000);//MBps
+    controller->setAPCap(i+1,3000000);//MBps
     std::ostringstream oss;
     oss << "wifi-default-" << i;
     Ssid ssid = Ssid (oss.str ());
@@ -425,7 +425,7 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
    std::map<long int, ns3::ofi::FlowInfoItem*>::iterator fit = pMapFlow->begin();
    while(fit!=pMapFlow->end()){
      MyOnOffApplication* pApp = dynamic_cast<MyOnOffApplication*>(GetPointer(pmapFlowApp[fit->second->nFlowId]));
-     //std::cout<<"Enforce flow "<<fit->first<<" on "<<fit->second->nOnNetwork<<std::endl;
+     std::cout<<"Enforce flow "<<fit->first<<" on "<<fit->second->nOnNetwork<<std::endl;
      pApp->SetNetwork(fit->second->nOnNetwork);
      ++fit;
    }   

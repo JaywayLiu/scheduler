@@ -224,8 +224,18 @@ void MyController::doScheduling(){
             std::pair < std::map<int, std::set<int> >::iterator, bool> retU;
             std::pair < std::map<int, std::vector<long int> >::iterator, bool> retUserFlow;
 
-            int iii = 0;
+            apToFlowSet.clear();
+            apToUserSet.clear();
+            userFlowList.clear();
 
+            int iii = 0;
+            
+           /* lingling
+   std::map<long int, ns3::ofi::FlowInfoItem*>* pMapFlow = controller->getAllFlowMap();
+   std::map<long int, ns3::ofi::FlowI
+   std::map<long int, ns3::ofi::FlowInfoItem*>* pMapFlow = controller->getAllFlowMap();
+   std::map<long int, ns3::ofi::FlowI
+*/
             for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++, iii++) {
                 cout<<iii<<" "<< it->first << " " << it->second->nAvailWiFiAP<<" "<< it->second->nAvailLTEBS<<endl;
             }
@@ -380,6 +390,10 @@ void MyController::doScheduling(){
 
                 if (wifiSum != 0) {
                     resourceW = ww[i] / wifiSum * (capMap->find(apIndex)->second);
+                    if(resourceW ==0)
+                    {
+                        cout<<"resource! "<<ww[i]<< " "<<wifiSum<<" "<<(capMap->find(apIndex)->second)<<endl;
+                    }
                 }
                 if (lteSum != 0) {
                     resourceL = lw[i] / lteSum * (capMap->find(apIndex)->second);
@@ -416,6 +430,9 @@ void MyController::doScheduling(){
                         u += (pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW));
                         assert(((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))) != 0);
                         cerr << "userWW" << userWW << endl;
+                        assert(resourceW !=0);
+                        assert((pallflow->find(*Fit)->second->dSize) !=0);
+                        assert((pallflow->find(*Fit)->second->weight) !=0);
                         assert(!isinf((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))));
                     } else if (re[npos] == 0) {
                         u += (pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL));
@@ -478,7 +495,6 @@ void MyController::doScheduling(){
 
         ///std::map<int, FlowInfoItem*>* pallflow 
         ///int is the flow ID, FlowInfoItem is the pointer to the flow
-
         void FlowScheduler::makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow0,
                 std::map<int, double>* wifiW0, std::map<int, double>* lteW0)
  {
@@ -488,11 +504,17 @@ void MyController::doScheduling(){
             capMap = papcap;
             pallflow = pallflow0;
 
+            lteFlows.clear();
+
 
             std::set<int> toDoList;
 
             double obMax = 0;
-            for (map<int, int>::iterator it = papcap->begin(); it != papcap->end(); it++) {
+            
+            //exit(0);
+            divideByCoverage();
+
+            for (map<int, set<int> >::iterator it = apToUserSet.begin(); it != apToUserSet.end(); it++) {
                 // cout<<"pushed value o:"<<it->first<<endl;
                 if ((it->first) != 0) {
                     //toDoList.push_back(it->first);
@@ -502,9 +524,6 @@ void MyController::doScheduling(){
             }
 
             cout << "to size" << toDoList.size() << endl;
-            //exit(0);
-            divideByCoverage();
-
             //check info
 
 
@@ -535,9 +554,10 @@ void MyController::doScheduling(){
                     }//if
                 }//for
 
-                //translate the schedule
                 cerr << "nflow *" << nflow << endl;
                 int* re = new int[nflow];
+                
+                //translate the schedule
                 tran(maxConfig, re, nflow);
 
                 vector<long int>& vv = apToFlowSet.find(maxAPIndex)->second;
@@ -578,8 +598,6 @@ void MyController::doScheduling(){
 
         }
 	////////////////////////////////////////////////////////////////////////////////////////////////ljw
-
-
 /*
 
 void FlowScheduler::makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>*){
@@ -601,8 +619,8 @@ void FlowScheduler::makeDecisions(std::map<int, int>* papcap, std::map<long int,
        ++flit;
    }
 } 
-*/
 
+*/
 ///////////////////////////////////////////FlowScheduler/////////////////////////////////////////////////
 
 FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, int user):window(5), PACKETSIZE(1048){
