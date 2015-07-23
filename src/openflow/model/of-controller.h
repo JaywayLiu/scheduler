@@ -8,6 +8,10 @@
 #include "ns3/openflow-interface.h"
 #include "ns3/openflow-switch-net-device.h"
 
+using std::vector;
+using std::map;
+using std::set;
+
 namespace ns3 {
   namespace ofi {
 
@@ -46,7 +50,37 @@ namespace ns3 {
        FlowScheduler(std::ofstream* output):pOutStream(output){};
        void makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt); 
     private:
+
+       //??do we need this
        std::ofstream* pOutStream;
+
+                   void divideByCoverage();
+            double sumAllLTEWeights();
+            double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe);
+            double calcUtility(int apIndex, vector<int>*vv, int* re, int nflow);
+
+            //first int is AP index, the vector  is the set of flows under that AP
+            std::map<int, vector<int> > apToFlowSet;
+
+	   //the map from ap index to the set of users under it
+            std::map<int, set<int> > apToUserSet;
+
+            //from user index to list of flow indices
+            std::map<int, vector<int> > userFlowList;
+
+            //the AP indices that are assigned 
+	    std::vector<int> assigned;
+
+            //the first int is the user index 
+            //second double LTE weight of the flow 
+            std::map<int, double> lteFlows;
+
+            std::map<int, double>* wifiW;
+            std::map<int, double>* lteW;
+
+
+            std::map<int, int>* capMap;
+            std::map<long int, FlowInfoItem*>* pallflow;
     };
 
  

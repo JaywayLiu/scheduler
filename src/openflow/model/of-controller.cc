@@ -5,6 +5,19 @@
 #include "ns3/ipv4-list-routing.h"
 
 
+#include <cmath>
+#include <numeric>
+#include <algorithm>
+#include <iostream>
+#include <cassert>
+using std::cerr;
+using std::cout;
+using std::endl;
+
+using std::ostream;
+ostream cnull(NULL);
+
+
 #include <iostream>
 #include <string>
 namespace ns3 {
@@ -196,6 +209,367 @@ void MyController::doScheduling(){
 }
 
 ///////////////////////////////////////////FlowScheduler/////////////////////////////////////////////////
+//
+//
+
+
+
+
+	/////////////////////////////////////////////////////////////////////////////////////ljw
+
+        void
+        FlowScheduler::divideByCoverage() {
+
+            std::pair < std::map<int, std::vector<int> >::iterator, bool> ret;
+            std::pair < std::map<int, std::set<int> >::iterator, bool> retU;
+            std::pair < std::map<int, std::vector<int> >::iterator, bool> retUserFlow;
+            for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++) {
+                std::vector<int> temp;
+                temp.push_back(it->first);
+
+
+                std::set<int> tset;
+                tset.insert(it->second->userIndex);
+
+                std::vector<int> flowv;
+                flowv.push_back(it->first);
+
+                ret = apToFlowSet.insert(std::pair<int, std::vector<int> >(it->second->nAvailLTEBS, temp));
+                retU = apToUserSet.insert(std::pair<int, std::set<int> >(it->second->nAvailLTEBS, tset));
+                retUserFlow = userFlowList.insert(std::pair<int, std::vector<int> >(it->second->userIndex, flowv));
+                if (ret.second == false) {
+                    ret.first->second.push_back(it->first);
+
+                }
+                if (retU.second == false) {
+                    retU.first->second.insert(it->second->userIndex);
+                }
+                if (retUserFlow.second == false) {
+                    retUserFlow.first->second.push_back(it->first);
+                }
+
+
+
+                ret = apToFlowSet.insert(std::pair<int, std::vector<int> >(it->second->nAvailWiFiAP, temp));
+                retU = apToUserSet.insert(std::pair<int, std::set<int> >(it->second->nAvailWiFiAP, tset));
+                if (ret.second == false) {
+                    ret.first->second.push_back(it->first);
+
+                }
+                if (retU.second == false) {
+                    retU.first->second.insert(it->second->userIndex);
+                }
+                //	vector<int> &vv= it-> 
+                //apToUESet.inset(std::pair<int, )
+            }
+            cerr << "finish counting" << endl;
+
+
+        }
+
+        double
+        FlowScheduler::sumAllLTEWeights() {
+            double sum = 0;
+            for (map<int, double>::iterator it = lteFlows.begin(); it != lteFlows.end(); it++) {
+                sum += it->second;
+
+            }
+            return sum;
+
+            //return std::accumulate(lteFlows.begin(), lteFlows.end(), (double) 0);
+        }
+
+        void
+        tran(int input, int* re, int nbits) {
+            for (int i = 0; i < nbits; i++) {
+                int one = (0x0000000000000001 << i);
+                re[i] = (one & input) >> i;
+            }
+        }
+
+        //		double
+        //		calcUtility(const std::map<int, FlowInfoItem*>* pallflow, const vector<int>* vv)
+        //		{
+        //
+        //		}
+        ///this function gets the total user weights connected to wifi
+        ///vv is the flow indices, re is the translated configuration, 0
+        ///is LTE
+
+        double
+        FlowScheduler::calcUtility(int apIndex, vector<int>*vv, int* re, int nflow) {
+
+            double u = 0;
+            set<int> &userList = apToUserSet.find(apIndex)->second;
+            if (userList.size() == 0)
+                return 0;
+
+
+            cerr << "apIndex" << apIndex << endl;
+
+            double* ww = new double[userList.size()];
+            double* lw = new double[userList.size()];
+            //cerr << "list size:" << userList.size() << endl;
+
+            for (unsigned int i = 0; i < userList.size(); i++) {
+                ww[i] = 0;
+                lw[i] = 0;
+            }
+
+            //for every user, iterate all the flows
+            int i = 0;
+            for (set<int>::iterator it = userList.begin(); it != userList.end(); it++, i++) {
+                bool isWiFi = false;
+                bool isLTE = false;
+
+                int userI = *it;
+                vector<int> &flows = userFlowList.find(userI)->second;
+                for (vector<int>::iterator Fit = flows.begin(); Fit != flows.end(); Fit++) {
+                    int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
+                    //	    cerr<<"npos"<<npos<<endl;
+                    if (re[npos] == 1)
+                        isWiFi = true;
+                    else if (re[npos] == 0)
+                        isLTE = true;
+                    else {
+                        std::cout << "error assign " << npos << " " << re[npos] << std::endl;
+                        exit(0);
+                    }
+
+                }//for in
+                if (isWiFi) {
+                    ww[i] = wifiW->find(userI)->second;
+                }
+                if (isLTE) {
+                    cerr << "userI" << userI << endl;
+                    assert(userI >= 0);
+                    //assert(userI <= 6);
+                    lw[i] = lteW->find(userI)->second;
+                    //lw[userI] = 1;
+                }
+            }//for out
+            double wifiSum = 0;
+            double lteSum = 0;
+
+            for (unsigned int i = 0; i < userList.size(); i++) {
+                wifiSum += ww[i];
+            }
+            for (unsigned int i = 0; i < userList.size(); i++) {
+                lteSum += lw[i];
+            }
+
+
+            //for every user 
+            i = 0;
+            for (set<int>::iterator it = userList.begin(); it != userList.end(); it++, i++) {
+
+                int userI = *it;
+                double resourceW = 0;
+                double resourceL = 0;
+
+                if (wifiSum != 0) {
+                    resourceW = ww[i] / wifiSum * (capMap->find(apIndex)->second);
+                }
+                if (lteSum != 0) {
+                    resourceL = lw[i] / lteSum * (capMap->find(apIndex)->second);
+                }
+                assert(!isinf(resourceW));
+                assert(!isinf(resourceL));
+
+
+
+
+                vector<int> &flows = userFlowList.find(userI)->second;
+
+
+                double userWW = 0;
+                double userWL = 0;
+                for (vector<int>::iterator Fit = flows.begin(); Fit < flows.end(); Fit++) {
+                    int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
+                    //	    cerr<<"npos"<<npos<<endl;
+                    if (re[npos] == 1) {
+                        //userW += (pallflow->find(*Fit)->second->weight);
+                        userWW += ((pallflow->find(*Fit)->second->weight)* (pallflow->find(*Fit)->second->dSize));
+                    } else if (re[npos] == 0) {
+
+                        userWL += ((pallflow->find(*Fit)->second->weight)* (pallflow->find(*Fit)->second->dSize));
+                    }
+
+                }//for fit
+
+
+                for (vector<int>::iterator Fit = flows.begin(); Fit < flows.end(); Fit++) {
+                    //					u += log(resource * ((pallflow->find(*Fit)->second->weight) / userW));
+                    int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
+                    if (re[npos] == 1) {
+                        u += (pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW));
+                        assert(((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))) != 0);
+                        cerr << "userWW" << userWW << endl;
+                        assert(!isinf((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))));
+                    } else if (re[npos] == 0) {
+                        u += (pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL));
+                        assert((pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL)) != 0);
+                        assert(!isinf(pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL)));
+                    }
+
+                }
+
+            }//for user
+            cerr << "u=" << u << endl;
+            return u;
+        }
+
+        double FlowScheduler::findMaxConfig(int apIndex, unsigned int* result, int* nflowRe) {
+            //unsigned int re = 0;
+            double value = 0;
+            double maxV = 0;
+
+            int nflow = 0;
+            vector<int>& vv = apToFlowSet.find(apIndex)->second;
+            //cerr << apIndex << "  size of vv" << vv.size() << endl;
+            assert(vv.size() < 100);
+
+
+
+            for (vector<int>::iterator it = vv.begin(); it != vv.end(); it++) {
+                nflow += 1;
+            }
+
+           // cerr << "apIndex" << apIndex << " nflow" << nflow << endl;
+            assert(nflow >= 0);
+            *nflowRe = nflow;
+
+            if (nflow == 0)
+                return -1;
+
+            int* re = new int[nflow];
+
+            for (unsigned int i = 0; i <(unsigned int) (1 << nflow); i++) {
+                tran(i, re, nflow);
+
+                value = calcUtility(apIndex, &vv, re, nflow);
+                if (value > maxV) {
+
+                    maxV = value;
+                    *result = i;
+
+                }
+
+
+            }//for
+            //cerr << "maxV=" << maxV << " result " << *result << endl;
+            delete[] re;
+            return maxV;
+
+
+
+        }
+
+        ///std::map<int, FlowInfoItem*>* pallflow 
+        ///int is the flow ID, FlowInfoItem is the pointer to the flow
+
+        void FlowScheduler::makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow0,
+                std::map<int, double>* wifiW0, std::map<int, double>* lteW0)
+ {
+
+            wifiW = wifiW0;
+            lteW = lteW0;
+            capMap = papcap;
+            pallflow = pallflow0;
+
+
+            std::set<int> toDoList;
+
+            double obMax = 0;
+            for (map<int, int>::iterator it = papcap->begin(); it != papcap->end(); it++) {
+                // cout<<"pushed value o:"<<it->first<<endl;
+                if ((it->first) != 0) {
+                    //toDoList.push_back(it->first);
+                    int a = it->first;
+                    toDoList.insert(a);
+                }
+            }
+
+            cout << "to size" << toDoList.size() << endl;
+            //exit(0);
+            divideByCoverage();
+
+            //check info
+
+
+            unsigned int maxConfig = 0;
+            int maxAPIndex = 0;
+            int nflow = 0;
+            //std::map<int, FlowInfoItem*> cflow;
+            while (!toDoList.empty()) {
+                maxAPIndex = 0;
+                obMax = 0;
+                maxConfig = 0;
+                for (set<int>::iterator tit = toDoList.begin(); tit != toDoList.end(); tit++) {
+		//for every AP, call the function findMaxConfig to find the configuration
+            //that maximize the objective, 
+            //configuration is as a integer in maxConfig, for details see the definition
+                    double v = findMaxConfig(*tit, &maxConfig, &nflow);
+                    //exit(0);
+                    if (v < 0) {
+
+                        //toDoList.erase(*it);
+                        cerr << *tit << " v negative" << endl;
+                        continue;
+
+                    }
+                    if (v > obMax) {
+                        obMax = v;
+                        maxAPIndex = *tit;
+                    }//if
+                }//for
+
+                //translate the schedule
+                cerr << "nflow *" << nflow << endl;
+                int* re = new int[nflow];
+                tran(maxConfig, re, nflow);
+
+                vector<int>& vv = apToFlowSet.find(maxAPIndex)->second;
+                int jj = 0;
+
+                for (vector<int>::iterator it = vv.begin(); it != vv.end(); it++, jj++) {
+                    if (re[jj] == 0) {
+                        pallflow->find(*it)->second->nOnNetwork = pallflow->find(*it)->second->nAvailLTEBS;
+                        int userI = pallflow->find(*it)->second->userIndex;
+                        lteFlows[userI] = lteW->find(userI)->second;
+
+                    } else if (re[jj] == 1) {
+                        pallflow->find(*it)->second->nOnNetwork = pallflow->find(*it)->second->nAvailWiFiAP;
+
+                    }
+                }
+
+                delete[] re;
+
+                cout << "done " << maxAPIndex << " " << maxConfig << endl;
+                //toDoList.erase( std::remove( toDoList.begin(), toDoList.end(), maxAPIndex ), toDoList.end() );
+                set<int>::iterator sit = toDoList.find(maxAPIndex);
+                cerr << *sit << endl;
+                toDoList.erase(toDoList.find(maxAPIndex));
+                //remove 
+                //		    toDoList.remove(maxAPIndex);
+                //cout<<"todolist"<<toDoList.size()<<endl;
+
+            }//while
+            cerr << "decision all made" << endl;
+
+
+           
+
+            //remove apMax from the toToList
+
+            //for the next iteration, some flows are set to LTE already, so 
+
+        }
+	////////////////////////////////////////////////////////////////////////////////////////////////ljw
+
+
+/*
 
 void FlowScheduler::makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>*){
 
@@ -216,6 +590,7 @@ void FlowScheduler::makeDecisions(std::map<int, int>* papcap, std::map<long int,
        ++flit;
    }
 } 
+*/
 
 ///////////////////////////////////////////FlowScheduler/////////////////////////////////////////////////
 
