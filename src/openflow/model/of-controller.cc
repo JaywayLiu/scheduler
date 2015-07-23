@@ -320,12 +320,8 @@ void MyController::doScheduling(){
             }
         }
 
-        //		double
-        //		calcUtility(const std::map<int, FlowInfoItem*>* pallflow, const vector<int>* vv)
-        //		{
-        //
-        //		}
-        ///this function gets the total user weights connected to wifi
+
+///this function gets the total user weights connected to wifi
         ///vv is the flow indices, re is the translated configuration, 0
         ///is LTE
 
@@ -348,7 +344,8 @@ void MyController::doScheduling(){
 
             double* ww = new double[userList.size()];
             double* lw = new double[userList.size()];
-            cerr << "list size:" << userList.size() << endl;
+           
+            //cerr << "list size:" << userList.size() << endl;
 
             for (unsigned int i = 0; i < userList.size(); i++) {
                 ww[i] = 0;
@@ -415,7 +412,7 @@ void MyController::doScheduling(){
                    // }
                 }
                 if (lteSum != 0) {
-                    resourceL = lw[i] / lteSum * (capMap->find(apIndex)->second);
+                    resourceL = lw[i] / lteSum * (capMap->find(0)->second);
                 }
                 assert(!isinf(resourceW));
                 assert(!isinf(resourceL));
@@ -444,11 +441,12 @@ void MyController::doScheduling(){
 
                 for (vector<long int>::iterator Fit = flows.begin(); Fit != flows.end(); Fit++) {
                     //					u += log(resource * ((pallflow->find(*Fit)->second->weight) / userW));
+                    cerr<<"resourceW " <<resourceW<<" "<< resourceL<<endl;
                     int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
                     if (re[npos] == 1) {
                         u += (pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW));
                         assert(((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))) != 0);
-                        cerr << "userWW" << userWW << endl;
+                       // cerr << "userWW" << userWW << endl;
                         assert(resourceW !=0);
                         assert((pallflow->find(*Fit)->second->dSize) !=0);
                         assert((pallflow->find(*Fit)->second->weight) !=0);
@@ -487,14 +485,16 @@ void MyController::doScheduling(){
             *nflowRe = nflow;
 
             if (nflow == 0)
-                return -1;
+                return 0;
 
             int* re = new int[nflow];
 
-            for (unsigned int i = 0; i <(unsigned int) (1 << nflow); i++) {
+            for (unsigned int i = 0; i <((unsigned int) (1 << nflow)); i++) {
                 tran(i, re, nflow);
 
                 value = calcUtility(apIndex, &vv, re, nflow);
+
+                cerr<<"calc utility of "<<i <<" ="<<value<<endl;
                 if (value > maxV) {
 
                     maxV = value;
@@ -504,7 +504,7 @@ void MyController::doScheduling(){
 
 
             }//for
-            //cerr << "maxV=" << maxV << " result " << *result << endl;
+            cerr << "maxV=" << maxV << " result " << *result << endl;
             delete[] re;
             return maxV;
 
