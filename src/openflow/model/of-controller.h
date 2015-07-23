@@ -57,16 +57,16 @@ namespace ns3 {
                    void divideByCoverage();
             double sumAllLTEWeights();
             double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe);
-            double calcUtility(int apIndex, vector<int>*vv, int* re, int nflow);
+            double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow);
 
             //first int is AP index, the vector  is the set of flows under that AP
-            std::map<int, vector<int> > apToFlowSet;
+            std::map<int, vector<long int> > apToFlowSet;
 
 	   //the map from ap index to the set of users under it
             std::map<int, set<int> > apToUserSet;
 
             //from user index to list of flow indices
-            std::map<int, vector<int> > userFlowList;
+            std::map<int, vector<long int> > userFlowList;
 
             //the AP indices that are assigned 
 	    std::vector<int> assigned;

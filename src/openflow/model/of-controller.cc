@@ -220,23 +220,30 @@ void MyController::doScheduling(){
         void
         FlowScheduler::divideByCoverage() {
 
-            std::pair < std::map<int, std::vector<int> >::iterator, bool> ret;
+            std::pair < std::map<int, std::vector<long int> >::iterator, bool> ret;
             std::pair < std::map<int, std::set<int> >::iterator, bool> retU;
-            std::pair < std::map<int, std::vector<int> >::iterator, bool> retUserFlow;
+            std::pair < std::map<int, std::vector<long int> >::iterator, bool> retUserFlow;
+
+            int iii = 0;
+
+            for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++, iii++) {
+                cout<<iii<<" "<< it->first << " " << it->second->nAvailWiFiAP<<" "<< it->second->nAvailLTEBS<<endl;
+            }
             for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++) {
-                std::vector<int> temp;
+                std::vector<long int> temp;
                 temp.push_back(it->first);
 
 
                 std::set<int> tset;
                 tset.insert(it->second->userIndex);
 
-                std::vector<int> flowv;
+                std::vector<long int> flowv;
                 flowv.push_back(it->first);
 
-                ret = apToFlowSet.insert(std::pair<int, std::vector<int> >(it->second->nAvailLTEBS, temp));
+                ret = apToFlowSet.insert(std::pair<int, std::vector<long int> >(it->second->nAvailLTEBS, temp));
+                assert(it->second->nAvailLTEBS ==0);
                 retU = apToUserSet.insert(std::pair<int, std::set<int> >(it->second->nAvailLTEBS, tset));
-                retUserFlow = userFlowList.insert(std::pair<int, std::vector<int> >(it->second->userIndex, flowv));
+                retUserFlow = userFlowList.insert(std::pair<int, std::vector<long int> >(it->second->userIndex, flowv));
                 if (ret.second == false) {
                     ret.first->second.push_back(it->first);
 
@@ -249,18 +256,22 @@ void MyController::doScheduling(){
                 }
 
 
+                assert(it->second->nAvailWiFiAP >0 && it->second->nAvailWiFiAP<20);
 
-                ret = apToFlowSet.insert(std::pair<int, std::vector<int> >(it->second->nAvailWiFiAP, temp));
+                ret = apToFlowSet.insert(std::pair<int, std::vector<long int> >(it->second->nAvailWiFiAP, temp));
                 retU = apToUserSet.insert(std::pair<int, std::set<int> >(it->second->nAvailWiFiAP, tset));
+
                 if (ret.second == false) {
                     ret.first->second.push_back(it->first);
+                    if(it->second->nAvailWiFiAP ==1)
+                    {
+                        cout<<"size "<< ret.first->second.size()<<" flow:"<<it->first<<endl;
+                    }
 
                 }
                 if (retU.second == false) {
                     retU.first->second.insert(it->second->userIndex);
                 }
-                //	vector<int> &vv= it-> 
-                //apToUESet.inset(std::pair<int, )
             }
             cerr << "finish counting" << endl;
 
@@ -297,7 +308,7 @@ void MyController::doScheduling(){
         ///is LTE
 
         double
-        FlowScheduler::calcUtility(int apIndex, vector<int>*vv, int* re, int nflow) {
+        FlowScheduler::calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow) {
 
             double u = 0;
             set<int> &userList = apToUserSet.find(apIndex)->second;
@@ -323,8 +334,8 @@ void MyController::doScheduling(){
                 bool isLTE = false;
 
                 int userI = *it;
-                vector<int> &flows = userFlowList.find(userI)->second;
-                for (vector<int>::iterator Fit = flows.begin(); Fit != flows.end(); Fit++) {
+                vector<long int> &flows = userFlowList.find(userI)->second;
+                for (vector<long int>::iterator Fit = flows.begin(); Fit != flows.end(); Fit++) {
                     int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
                     //	    cerr<<"npos"<<npos<<endl;
                     if (re[npos] == 1)
@@ -379,12 +390,12 @@ void MyController::doScheduling(){
 
 
 
-                vector<int> &flows = userFlowList.find(userI)->second;
+                vector<long int> &flows = userFlowList.find(userI)->second;
 
 
                 double userWW = 0;
                 double userWL = 0;
-                for (vector<int>::iterator Fit = flows.begin(); Fit < flows.end(); Fit++) {
+                for (vector<long int>::iterator Fit = flows.begin(); Fit < flows.end(); Fit++) {
                     int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
                     //	    cerr<<"npos"<<npos<<endl;
                     if (re[npos] == 1) {
@@ -398,7 +409,7 @@ void MyController::doScheduling(){
                 }//for fit
 
 
-                for (vector<int>::iterator Fit = flows.begin(); Fit < flows.end(); Fit++) {
+                for (vector<long int>::iterator Fit = flows.begin(); Fit != flows.end(); Fit++) {
                     //					u += log(resource * ((pallflow->find(*Fit)->second->weight) / userW));
                     int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
                     if (re[npos] == 1) {
@@ -425,13 +436,13 @@ void MyController::doScheduling(){
             double maxV = 0;
 
             int nflow = 0;
-            vector<int>& vv = apToFlowSet.find(apIndex)->second;
-            //cerr << apIndex << "  size of vv" << vv.size() << endl;
+            vector<long int>& vv = apToFlowSet.find(apIndex)->second;
+            cerr << apIndex << "  size of vv" << vv.size() << endl;
             assert(vv.size() < 100);
 
 
 
-            for (vector<int>::iterator it = vv.begin(); it != vv.end(); it++) {
+            for (vector<long int>::iterator it = vv.begin(); it != vv.end(); it++) {
                 nflow += 1;
             }
 
@@ -529,10 +540,10 @@ void MyController::doScheduling(){
                 int* re = new int[nflow];
                 tran(maxConfig, re, nflow);
 
-                vector<int>& vv = apToFlowSet.find(maxAPIndex)->second;
+                vector<long int>& vv = apToFlowSet.find(maxAPIndex)->second;
                 int jj = 0;
 
-                for (vector<int>::iterator it = vv.begin(); it != vv.end(); it++, jj++) {
+                for (vector<long int>::iterator it = vv.begin(); it != vv.end(); it++, jj++) {
                     if (re[jj] == 0) {
                         pallflow->find(*it)->second->nOnNetwork = pallflow->find(*it)->second->nAvailLTEBS;
                         int userI = pallflow->find(*it)->second->userIndex;
