@@ -17,6 +17,8 @@ using std::endl;
 using std::ostream;
 ostream cnull(NULL);
 
+#define cerr cnull
+
 
 #include <iostream>
 #include <string>
