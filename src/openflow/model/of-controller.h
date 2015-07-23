@@ -102,6 +102,10 @@ namespace ns3 {
       void setAPSwitch(int apid, OpenFlowSwitchNetDevice* psw) {mapAPSwitch[apid] = psw;};
       void setSrcIPUser(uint32_t ip, int user) {mapSrcIPUser[ip] = user;}
 
+      void setUENumber(uint32_t n) {maxUENumber = n;}
+
+      void setDefaultSINR();
+
     private:
  
       std::map<int, int> mapAPCap;
@@ -117,6 +121,8 @@ namespace ns3 {
       std::map<int, double> mapWifiWt;
 
       std::map<int, double> mapAPLoad;
+
+      uint32_t maxUENumber;
 
       FlowScheduler *pmyScheduler;
       std::ofstream controllerlog; 

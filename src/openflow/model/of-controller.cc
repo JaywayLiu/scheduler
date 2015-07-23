@@ -190,6 +190,16 @@ std::map<long int, FlowInfoItem*>* MyController::getAllFlowMap(){
 }
 
 
+void MyController::setDefaultSINR()
+{
+    for(uint32_t i=0; i< maxUENumber; i++)
+    {
+        mapSINR[i] = 1;
+        mapWifiWt[i] = 1;
+    }
+}
+
+
 void MyController::updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time time){  
     pFlowItem->updateSize(pktcount, time);
 
@@ -321,7 +331,13 @@ void MyController::doScheduling(){
         FlowScheduler::calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow) {
 
             double u = 0;
-            set<int> &userList = apToUserSet.find(apIndex)->second;
+        map<int, set<int> >::iterator setit = apToUserSet.find(apIndex);
+        if(setit == apToUserSet.end())
+        {
+            cout<<"can not find any user under ap "<<apIndex<<endl;
+            return 0;
+        }
+            set<int> &userList = setit->second;
             if (userList.size() == 0)
                 return 0;
 
@@ -330,7 +346,7 @@ void MyController::doScheduling(){
 
             double* ww = new double[userList.size()];
             double* lw = new double[userList.size()];
-            //cerr << "list size:" << userList.size() << endl;
+            cerr << "list size:" << userList.size() << endl;
 
             for (unsigned int i = 0; i < userList.size(); i++) {
                 ww[i] = 0;
@@ -374,6 +390,7 @@ void MyController::doScheduling(){
 
             for (unsigned int i = 0; i < userList.size(); i++) {
                 wifiSum += ww[i];
+                //cout<<"ww[i]"<<i<<" "<<ww[i]<<endl;
             }
             for (unsigned int i = 0; i < userList.size(); i++) {
                 lteSum += lw[i];
@@ -390,10 +407,10 @@ void MyController::doScheduling(){
 
                 if (wifiSum != 0) {
                     resourceW = ww[i] / wifiSum * (capMap->find(apIndex)->second);
-                    if(resourceW ==0)
-                    {
-                        cout<<"resource! "<<ww[i]<< " "<<wifiSum<<" "<<(capMap->find(apIndex)->second)<<endl;
-                    }
+                    //if(resourceW ==0)
+                    //{
+                        //cout<<"resource! "<<ww[i]<< " "<<wifiSum<<" "<<(capMap->find(apIndex)->second)<<endl;
+                   // }
                 }
                 if (lteSum != 0) {
                     resourceL = lw[i] / lteSum * (capMap->find(apIndex)->second);
@@ -554,7 +571,7 @@ void MyController::doScheduling(){
                     }//if
                 }//for
 
-                cerr << "nflow *" << nflow << endl;
+                //cerr << "nflow *" << nflow << endl;
                 int* re = new int[nflow];
                 
                 //translate the schedule

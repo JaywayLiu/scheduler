@@ -346,6 +346,9 @@ main (int argc, char *argv[])
   Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
   flowSizebps->SetAttribute ("Min", DoubleValue (5000));
   flowSizebps->SetAttribute ("Max", DoubleValue (2000000));
+  
+  controller->setUENumber(nWiFiAPs * nUesPerWiFiAp);
+  controller->setDefaultSINR();
 
   int nFlSize;
   double dFlStart, dFlLen; 
