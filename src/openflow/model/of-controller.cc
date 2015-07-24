@@ -241,16 +241,12 @@ void MyController::doScheduling(){
             userFlowList.clear();
 
             int iii = 0;
-            
-           /* lingling
-   std::map<long int, ns3::ofi::FlowInfoItem*>* pMapFlow = controller->getAllFlowMap();
-   std::map<long int, ns3::ofi::FlowI
-   std::map<long int, ns3::ofi::FlowInfoItem*>* pMapFlow = controller->getAllFlowMap();
-   std::map<long int, ns3::ofi::FlowI
-*/
+
             for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++, iii++) {
-                cout<<iii<<" "<< it->first << " " << it->second->nAvailWiFiAP<<" "<< it->second->nAvailLTEBS<<endl;
+                cerr<<iii<<" "<< it->first << " " << it->second->nAvailWiFiAP<<" "<< it->second->nAvailLTEBS<<endl;
             }
+
+
             for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++) {
                 std::vector<long int> temp;
                 temp.push_back(it->first);
@@ -315,7 +311,7 @@ void MyController::doScheduling(){
         void
         tran(int input, int* re, int nbits) {
             for (int i = 0; i < nbits; i++) {
-                int one = (0x0000000000000001 << i);
+                int one = ((0x01) << i);
                 re[i] = (one & input) >> i;
             }
         }
@@ -427,9 +423,7 @@ void MyController::doScheduling(){
                 double userWL = 0;
                 for (vector<long int>::iterator Fit = flows.begin(); Fit < flows.end(); Fit++) {
                     int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
-                    //	    cerr<<"npos"<<npos<<endl;
                     if (re[npos] == 1) {
-                        //userW += (pallflow->find(*Fit)->second->weight);
                         userWW += ((pallflow->find(*Fit)->second->weight)* (pallflow->find(*Fit)->second->dSize));
                     } else if (re[npos] == 0) {
 
@@ -441,21 +435,26 @@ void MyController::doScheduling(){
 
                 for (vector<long int>::iterator Fit = flows.begin(); Fit != flows.end(); Fit++) {
                     //					u += log(resource * ((pallflow->find(*Fit)->second->weight) / userW));
+                    double uFlow =0;
                     cerr<<"resourceW " <<resourceW<<" "<< resourceL<<endl;
                     int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
                     if (re[npos] == 1) {
-                        u += (pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW));
-                        assert(((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))) != 0);
-                       // cerr << "userWW" << userWW << endl;
-                        assert(resourceW !=0);
-                        assert((pallflow->find(*Fit)->second->dSize) !=0);
-                        assert((pallflow->find(*Fit)->second->weight) !=0);
-                        assert(!isinf((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))));
+                        uFlow = (pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW));
+
+                        u += uFlow;                         
+                        //assert(((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))) != 0);
+                       // cerr << "userww" << userww << endl;
+                       // assert(resourceW !=0);
+                        //assert((pallflow->find(*Fit)->second->dSize) !=0);
+                        //assert((pallflow->find(*Fit)->second->weight) !=0);
+                        //assert(!isinf((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))));
                     } else if (re[npos] == 0) {
-                        u += (pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL));
-                        assert((pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL)) != 0);
-                        assert(!isinf(pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL)));
+                        uFlow = (pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL));
+                        u += uFlow;                         
+                        //assert((pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL)) != 0);
+                        //assert(!isinf(pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL)));
                     }
+                    this->uCalc[npos] = uFlow;
 
                 }
 
@@ -463,6 +462,10 @@ void MyController::doScheduling(){
             cerr << "u=" << u << endl;
             return u;
         }
+
+            void FlowScheduler::setUtility(vector<long int>* vp, vector<double>* up)
+{
+}
 
         double FlowScheduler::findMaxConfig(int apIndex, unsigned int* result, int* nflowRe) {
             //unsigned int re = 0;
@@ -472,6 +475,8 @@ void MyController::doScheduling(){
             int nflow = 0;
             vector<long int>& vv = apToFlowSet.find(apIndex)->second;
             cerr << apIndex << "  size of vv" << vv.size() << endl;
+
+            //we can not solve prblem of this scale yet
             assert(vv.size() < 100);
 
 
@@ -489,6 +494,10 @@ void MyController::doScheduling(){
 
             int* re = new int[nflow];
 
+            //uMax.clear();
+            uCalc.clear();
+            //uCalc.resize(nflow);
+
             for (unsigned int i = 0; i <((unsigned int) (1 << nflow)); i++) {
                 tran(i, re, nflow);
 
@@ -499,12 +508,16 @@ void MyController::doScheduling(){
 
                     maxV = value;
                     *result = i;
+                    this->uMax.swap(this->uCalc);
 
                 }
 
 
             }//for
             cerr << "maxV=" << maxV << " result " << *result << endl;
+            //set the utility of vv to uMax
+            //setUtility(&vv, &uMax); 
+
             delete[] re;
             return maxV;
 
@@ -660,6 +673,7 @@ FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, 
   
     dSize = 0;
     bOn = true;
+    utility = -1;
     //std::cout<<((ntohl(key->flow.nw_src)>>8)&255)<<std::endl;
     nFlowId = (((ntohl(key->flow.nw_src)>>8)&255)*100 + (ntohl(key->flow.nw_src)&255))*100000 + (ntohs(key->flow.tp_src));
 
