@@ -337,12 +337,35 @@ void MyController::doScheduling(){
         }
 
 
+
+double FlowScheduler::sumOldLteUtility(double newLteWSum)
+{
+    double sum = 0;
+    for(vector<long int>::iterator it= lteFlowIDs.begin(); it != lteFlowIDs.end(); it++)
+    {
+        if(pallflow->find(*it) == pallflow->end())
+        {
+            cout<<"find error in sumOldLteUtility"<<endl;
+            exit(0);
+        }
+        sum += (pallflow->find(*it)->second->utility);
+    }
+    if(newLteWSum ==0)
+        return sum;
+    else
+    {
+        double w = sumAllLTEWeights();
+        return (sum * (w/(w+newLteWSum)));
+    }
+}
+
+
 ///this function gets the total user weights connected to wifi
         ///vv is the flow indices, re is the translated configuration, 0
         ///is LTE
 
         double
-        FlowScheduler::calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, int isWiFiOnly) {
+        FlowScheduler::calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, double* lteSumOut, int isWiFiOnly) {
 
             double u = 0;
         map<int, set<int> >::iterator setit = apToUserSet.find(apIndex);
@@ -410,6 +433,8 @@ void MyController::doScheduling(){
             for (unsigned int i = 0; i < userList.size(); i++) {
                 lteSum += lw[i];
             }
+
+            *lteSumOut = lteSum;
 
 
             //for every user 
@@ -479,7 +504,13 @@ void MyController::doScheduling(){
                 }
 
             }//for user
-                      delete[] ww;
+
+            //the weights of lte flows already assigned
+            double oldw = sumOldLteUtility(lteSum);
+            //cout<< "oldw="<<oldw<<endl;
+            u += oldw;
+
+                delete[] ww;
                 delete[] lw;
 
 
@@ -503,7 +534,7 @@ void MyController::doScheduling(){
 
 }
 
-        double FlowScheduler::findMaxConfig(int apIndex, unsigned int* result, int* nflowRe) {
+        double FlowScheduler::findMaxConfig(int apIndex, unsigned int* result, int* nflowRe, double* lteSumP) {
             //unsigned int re = 0;
             double value = 0;
             double maxV = 0;
@@ -533,11 +564,13 @@ void MyController::doScheduling(){
             //uMax.clear();
             uCalc.clear();
             //uCalc.resize(nflow);
+         double lteSumF =0;
+         double lteSumC =0;
 
             for (unsigned int i = 0; i <((unsigned int) (1 << nflow)); i++) {
                 tran(i, re, nflow);
 
-                value = calcUtility(apIndex, &vv, re, nflow, 0);
+                value = calcUtility(apIndex, &vv, re, nflow, &lteSumC, 0);
 
                 cerr<<"calc utility of "<<i <<" ="<<value<<endl;
                 if (value > maxV) {
@@ -545,6 +578,7 @@ void MyController::doScheduling(){
                     maxV = value;
                     *result = i;
                     this->uMax.swap(this->uCalc);
+                    lteSumF = lteSumC;
 
                 }
 
@@ -552,7 +586,8 @@ void MyController::doScheduling(){
             }//for
             cerr << "maxV=" << maxV << " result " << *result << endl;
             //set the utility of vv to uMax
-            setUtility(&vv, &uMax); 
+            setUtility(&vv, &uMax);
+            *lteSumP = lteSumF;
 
             delete[] re;
             return maxV;
@@ -560,6 +595,22 @@ void MyController::doScheduling(){
 
 
         }
+
+
+void FlowScheduler::updateOldUtility(double lteSumF)
+{
+    for(vector<long int>::iterator it=lteFlowIDs.begin(); it != lteFlowIDs.end(); it++)
+    {
+        double wall = sumAllLTEWeights();
+        if(pallflow->find(*it) == pallflow->end())
+        {
+            cout<<"find error in updateOldUtility"<<endl;
+            exit(0);
+        }
+        (pallflow->find(*it)->second->utility) *= (wall / (wall + lteSumF)); 
+
+    }//for
+}
 
 
 
@@ -593,7 +644,7 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
 
     pallflow = pallflow0;
     double uAll =0;
-    vector<long int> lteFlowIDs;
+    //vector<long int> lteFlowIDs;
 
     divideByCoverage();
 
@@ -633,7 +684,9 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
             }
         }//for i
 
-        uAll += calcUtility(apIndex, &vv, plan, nflow, 1);
+        double lteSumO;
+
+        uAll += calcUtility(apIndex, &vv, plan, nflow, &lteSumO, 1);
         delete[] plan;
 
     }//for every wifi ap
@@ -658,6 +711,7 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
             pallflow = pallflow0;
 
             lteFlows.clear();
+            lteFlowIDs.clear();
 
 
             std::set<int> toDoList;
@@ -689,12 +743,14 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
                 maxAPIndex = 0;
                 obMax = 0;
                 maxConfig = 0;
+
+                double lteSumM =0;
+                double lteSumC =0;
                 for (set<int>::iterator tit = toDoList.begin(); tit != toDoList.end(); tit++) {
 		//for every AP, call the function findMaxConfig to find the configuration
             //that maximize the objective, 
             //configuration is as a integer in maxConfig, for details see the definition
-                    double v = findMaxConfig(*tit, &maxConfig, &nflow);
-                    //exit(0);
+                    double v = findMaxConfig(*tit, &maxConfig, &nflow, &lteSumC);
                     if (v < 0) {
 
                         //toDoList.erase(*it);
@@ -705,6 +761,7 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
                     if (v > obMax) {
                         obMax = v;
                         maxAPIndex = *tit;
+                        lteSumM = lteSumC;
                     }//if
                 }//for
 
@@ -722,12 +779,15 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
                         pallflow->find(*it)->second->nOnNetwork = pallflow->find(*it)->second->nAvailLTEBS;
                         int userI = pallflow->find(*it)->second->userIndex;
                         lteFlows[userI] = lteW->find(userI)->second;
+                        lteFlowIDs.push_back(*it);
 
                     } else if (re[jj] == 1) {
                         pallflow->find(*it)->second->nOnNetwork = pallflow->find(*it)->second->nAvailWiFiAP;
 
                     }
                 }
+
+                updateOldUtility(lteSumM);
 
                 delete[] re;
 

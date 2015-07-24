@@ -73,10 +73,15 @@ namespace ns3 {
 
                    void divideByCoverage();
             double sumAllLTEWeights();
-            double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe);
-            double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, int isWiFiOnly);
+            double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe, double* lteSumP);
+            double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, double* lteSum, int isWiFiOnly);
 
             void setUtility(vector<long int>* vp, map<int, double>* up);
+
+            //this is for updating the lte flow utility once more flows are assigned to lte
+            void updateOldUtility(double lteSumF);
+
+            double sumOldLteUtility(double lteSum);
 
 
             //for the utility of random decision
@@ -93,6 +98,9 @@ namespace ns3 {
 
             //the AP indices that are assigned 
 	    std::vector<int> assigned;
+
+        //this records all the flows assigned to lte up to now
+        std::vector<long int> lteFlowIDs;
 
             //the first int is the user index 
             //second double LTE weight of the flow 
