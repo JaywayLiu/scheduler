@@ -554,6 +554,7 @@ void MyController::doScheduling(){
             std::set<int> toDoList;
 
             double obMax = 0;
+            double uAll = 0;
             
             //exit(0);
             divideByCoverage();
@@ -633,9 +634,14 @@ void MyController::doScheduling(){
             }//while
             cerr << "decision all made" << endl;
 
-
            
 
+            for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++) {
+                uAll += it->second->utility;
+
+            } 
+            cout<<"uAll = "<<uAll<<endl;
+            fprintf(ulogFp, "%.5f\n", uAll);
             //remove apMax from the toToList
 
             //for the next iteration, some flows are set to LTE already, so 

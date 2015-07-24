@@ -48,7 +48,14 @@ namespace ns3 {
     class FlowScheduler{
 
     public:
-       FlowScheduler(std::ofstream* output):pOutStream(output){};
+       FlowScheduler(std::ofstream* output):pOutStream(output){
+        ulogFp = fopen("utility.log", "w");
+       
+       };
+       ~FlowScheduler()
+       {
+           fclose(ulogFp);
+       }
        void makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt); 
     private:
 
@@ -88,6 +95,7 @@ namespace ns3 {
 
             std::map<int, int>* capMap;
             std::map<long int, FlowInfoItem*>* pallflow;
+            FILE* ulogFp;
     };
 
  
