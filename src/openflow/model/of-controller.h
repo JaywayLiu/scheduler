@@ -28,7 +28,7 @@ namespace ns3 {
 
        bool  bOn;
        long int  nFlowId;
-       int  nOnNetwork; //ID of currently used AP (0 for LTE and others for WiFi)
+       int  nOnNetwork; //ID of currently used AP (0 for LTE and others for WiFi)          
        int  nAvailLTEBS; //ID of connected LTE BS (always 0 in exp)
        int  nAvailWiFiAP; //ID of connected WiFi AP (starts from 1)
        
@@ -50,6 +50,7 @@ namespace ns3 {
     public:
        FlowScheduler(std::ofstream* output):pOutStream(output){
         ulogFp = fopen("utility.log", "w");
+     randomp = CreateObject<UniformRandomVariable> ();
        
        };
        ~FlowScheduler()
@@ -57,6 +58,7 @@ namespace ns3 {
            fclose(ulogFp);
        }
        void makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt); 
+       void makeDecisionsRandom(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt, int dryrun); 
     private:
 
        //??do we need this
@@ -65,9 +67,13 @@ namespace ns3 {
                    void divideByCoverage();
             double sumAllLTEWeights();
             double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe);
-            double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow);
+            double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, int isWiFiOnly);
 
             void setUtility(vector<long int>* vp, map<int, double>* up);
+
+
+            //for the utility of random decision
+            double calcLteU(vector<long int>* lid);
 
             //first int is AP index, the vector  is the set of flows under that AP
             std::map<int, vector<long int> > apToFlowSet;
@@ -96,7 +102,7 @@ namespace ns3 {
             std::map<int, int>* capMap;
             std::map<long int, FlowInfoItem*>* pallflow;
             FILE* ulogFp;
-    };
+             Ptr<UniformRandomVariable> randomp; };
 
  
     class MyController : public Controller {

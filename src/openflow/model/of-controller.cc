@@ -3,6 +3,7 @@
 #include "ns3/ipv4-address.h"
 #include "ns3/log.h"
 #include "ns3/ipv4-list-routing.h"
+#include "ns3/double.h"
 
 
 #include <cmath>
@@ -322,7 +323,7 @@ void MyController::doScheduling(){
         ///is LTE
 
         double
-        FlowScheduler::calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow) {
+        FlowScheduler::calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, int isWiFiOnly) {
 
             double u = 0;
         map<int, set<int> >::iterator setit = apToUserSet.find(apIndex);
@@ -402,10 +403,7 @@ void MyController::doScheduling(){
 
                 if (wifiSum != 0) {
                     resourceW = ww[i] / wifiSum * (capMap->find(apIndex)->second);
-                    //if(resourceW ==0)
-                    //{
-                        //cout<<"resource! "<<ww[i]<< " "<<wifiSum<<" "<<(capMap->find(apIndex)->second)<<endl;
-                   // }
+
                 }
                 if (lteSum != 0) {
                     resourceL = lw[i] / lteSum * (capMap->find(0)->second);
@@ -413,7 +411,7 @@ void MyController::doScheduling(){
                 assert(!isinf(resourceW));
                 assert(!isinf(resourceL));
 
-
+ 
 
 
                 vector<long int> &flows = userFlowList.find(userI)->second;
@@ -449,8 +447,11 @@ void MyController::doScheduling(){
                         //assert((pallflow->find(*Fit)->second->weight) !=0);
                         //assert(!isinf((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))));
                     } else if (re[npos] == 0) {
+                        if(!isWiFiOnly)
+                        {
                         uFlow = (pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL));
-                        u += uFlow;                         
+                        u += uFlow;
+                        }
                         //assert((pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL)) != 0);
                         //assert(!isinf(pallflow->find(*Fit)->second->weight) * log(resourceL * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWL)));
                     }
@@ -459,6 +460,10 @@ void MyController::doScheduling(){
                 }
 
             }//for user
+                      delete[] ww;
+                delete[] lw;
+
+
             cerr << "u=" << u << endl;
             return u;
         }
@@ -513,7 +518,7 @@ void MyController::doScheduling(){
             for (unsigned int i = 0; i <((unsigned int) (1 << nflow)); i++) {
                 tran(i, re, nflow);
 
-                value = calcUtility(apIndex, &vv, re, nflow);
+                value = calcUtility(apIndex, &vv, re, nflow, 0);
 
                 cerr<<"calc utility of "<<i <<" ="<<value<<endl;
                 if (value > maxV) {
@@ -536,6 +541,91 @@ void MyController::doScheduling(){
 
 
         }
+
+
+
+  double FlowScheduler::calcLteU(vector<long int>* lid)
+{
+    /*
+    map<int, double> lteUserW;
+    for(vector<long int>::iterator it= lid->begin(); it != lid->end(); it++)
+    {
+        int userI = pallflow->find(*it)->second->userIndex;
+        map<int, double>::iterator findit = lteW->find(userI);
+        if(findit == lteW->end())
+        {
+            cerr<<"error find userI in calcLteU"<<endl;
+        }
+
+        lteUserW[userI] = lteW[userI]->second;
+    }
+    */
+    return 0;
+
+
+}
+
+void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow0,
+        std::map<int, double>* wifiW0, std::map<int, double>* lteW0, int dryrun)
+{
+    wifiW = wifiW0;
+    lteW = lteW0;
+    capMap = papcap;
+
+    pallflow = pallflow0;
+    double uAll =0;
+    vector<long int> lteFlowIDs;
+
+    divideByCoverage();
+
+    //vector<int> result;
+    randomp->SetAttribute("Min", DoubleValue(0));
+    randomp->SetAttribute("Max", DoubleValue(10000000));
+
+    //for every wifi ap that has flows
+
+    for (map<int, set<int> >::iterator it = apToUserSet.begin(); it != apToUserSet.end(); it++) {
+        int apIndex= it->first;
+
+        vector<long int>& vv = apToFlowSet.find(apIndex)->second;
+        cerr << apIndex << "  size of vv" << vv.size() << endl;
+        //we can not solve prblem of this scale yet
+        assert(vv.size() < 100);
+
+        int nflow =0;
+
+        for (vector<long int>::iterator it = vv.begin(); it != vv.end(); it++) {
+            nflow += 1;
+        }
+        int* plan = new int[nflow];
+        for (int i=0; i<nflow; i++) {
+            plan[i] = (randomp->GetInteger()) %2;
+            if(!dryrun)
+            {
+            if(plan[i] ==0)
+            {
+                pallflow->find(vv[i])->second->nOnNetwork = pallflow->find(vv[i])->second->nAvailLTEBS;
+                lteFlowIDs.push_back(vv[i]);
+            }
+            else
+            {
+                pallflow->find(vv[i])->second->nOnNetwork = pallflow->find(vv[i])->second->nAvailWiFiAP;
+            }
+            }
+        }//for i
+
+        uAll += calcUtility(apIndex, &vv, plan, nflow, 1);
+        delete[] plan;
+
+    }//for every wifi ap
+
+    double ulte = calcLteU(&lteFlowIDs);
+    uAll+= ulte;
+    cout<<"uAll random"<<endl;
+
+
+}
+
 
         ///std::map<int, FlowInfoItem*>* pallflow 
         ///int is the flow ID, FlowInfoItem is the pointer to the flow
