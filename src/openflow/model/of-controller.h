@@ -15,6 +15,13 @@ using std::set;
 namespace ns3 {
   namespace ofi {
 
+    struct OrgFlow{
+       long int nId;
+       double   dStart;
+       double   dLen;
+       int      nSize; //bps
+    };
+
     class FlowInfoItem{
     public:
        FlowInfoItem(sw_flow_key* flKey, int onntwk, int availte, int avilwifi, int user);
@@ -79,7 +86,7 @@ namespace ns3 {
             std::map<int, vector<long int> > userFlowList;
 
             //the AP indices that are assigned 
-	        std::vector<int> assigned;
+	    std::vector<int> assigned;
 
             //the first int is the user index 
             //second double LTE weight of the flow 
@@ -111,16 +118,17 @@ namespace ns3 {
       std::map<long int, FlowInfoItem*>* getAllFlowMap();
       void updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time time);
 
-      void setAPCap(int apid, int cap) {mapAPCap[apid] = cap;};
-      void setSrcIPWifi(uint32_t ip, int apid) {mapSrcIPWifi[ip] = apid;};
-      void setSwitchAP(OpenFlowSwitchNetDevice* psw, int apid) {mapSwitchAP[psw] = apid;};
-      void setAPSwitch(int apid, OpenFlowSwitchNetDevice* psw) {mapAPSwitch[apid] = psw;};
+      void setAPCap(int apid, int cap) {mapAPCap[apid] = cap;}
+      void setSrcIPWifi(uint32_t ip, int apid) {mapSrcIPWifi[ip] = apid;}
+      void setSwitchAP(OpenFlowSwitchNetDevice* psw, int apid) {mapSwitchAP[psw] = apid;}
+      void setAPSwitch(int apid, OpenFlowSwitchNetDevice* psw) {mapAPSwitch[apid] = psw;}
       void setSrcIPUser(uint32_t ip, int user) {mapSrcIPUser[ip] = user;}
 
       void setUENumber(uint32_t n) {maxUENumber = n;}
 
       void setDefaultSINR();
 
+      void setOrgFlow(long int id, double start, double len, int size);
     private:
  
       std::map<int, int> mapAPCap;
@@ -138,6 +146,8 @@ namespace ns3 {
       std::map<int, double> mapAPLoad;
 
       uint32_t maxUENumber;
+
+      std::vector<OrgFlow> vecOrgFlow;
 
       FlowScheduler *pmyScheduler;
       std::ofstream controllerlog; 

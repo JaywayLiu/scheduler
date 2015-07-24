@@ -224,10 +224,20 @@ void MyOnOffApplication::StartApplication () // Called at time specified by Star
   // Insure no pending event
   CancelEvents ();
 
+  Ptr<UniformRandomVariable> StartNet = CreateObject<UniformRandomVariable> ();
+  StartNet->SetAttribute ("Min", DoubleValue (1));
+  StartNet->SetAttribute ("Max", DoubleValue (5));
   //default using lte
-  m_current_on = 0;
-  m_current_peer = m_lte_peer;
-  m_current_socket = m_lte_socket;
+  if(StartNet->GetValue()<2){
+     m_current_on = 0;
+     m_current_peer = m_lte_peer;
+     m_current_socket = m_lte_socket;
+  }
+  else{ 
+     m_current_on = 1;
+     m_current_peer = m_wifi_peer;
+     m_current_socket = m_wifi_socket;
+  }
   // If we are not yet connected, there is nothing to do here
   // The ConnectionComplete upcall will start timers at that time
   StartSending();

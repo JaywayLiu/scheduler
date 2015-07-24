@@ -181,14 +181,33 @@ void MyController::updateFlowStat(){
     ldit = mapAPLoad.begin();
     while(ldit != mapAPLoad.end()){
       dTotalLoad += ldit->second;
-      std::cout<<"AP "<<ldit->first<<" Load "<<ldit->second<<std::endl;
+      std::cout<<"AP "<<ldit->first<<" Load "<<ldit->second*8<<" bps "<<std::endl;
       ++ldit;
     }
-    std::cout<<"Total Load "<<dTotalLoad<<std::endl;
+    std::cout<<"Total Load "<<dTotalLoad*8<<" bps "<<std::endl;
+   
+    double dSrcLoad = 0;
+    double dNow = Simulator::Now().GetSeconds();
+    for(uint16_t i=0; i<vecOrgFlow.size();i++){
+        if(dNow >= vecOrgFlow[i].dStart && dNow <= vecOrgFlow[i].dStart + vecOrgFlow[i].dLen)
+            dSrcLoad += vecOrgFlow[i].nSize;
+    }
+    std::cout<<"Total Src Load "<<dSrcLoad<<" bps "<<std::endl;
+    
 }
  
 std::map<long int, FlowInfoItem*>* MyController::getAllFlowMap(){
     return &mapAllFlows;
+}
+
+
+void MyController::setOrgFlow(long int id, double start, double len, int size){
+    OrgFlow aFlow; 
+    aFlow.nId = id; 
+    aFlow.dStart = start; 
+    aFlow.dLen = len; 
+    aFlow.nSize = size; 
+    vecOrgFlow.push_back(aFlow);
 }
 
 
@@ -673,7 +692,7 @@ void FlowScheduler::makeDecisions(std::map<int, int>* papcap, std::map<long int,
 */
 ///////////////////////////////////////////FlowScheduler/////////////////////////////////////////////////
 
-FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, int user):window(5), PACKETSIZE(1048){
+FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, int user):window(5), PACKETSIZE(1024){
     flowKey.wildcards = key->wildcards;                                 // Wildcard fields
     flowKey.flow.in_port = key->flow.in_port;                                // Input switch port
     memcpy (flowKey.flow.dl_src, key->flow.dl_src, sizeof flowKey.flow.dl_src); // Ethernet source address.
