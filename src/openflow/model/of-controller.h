@@ -41,6 +41,7 @@ namespace ns3 {
 
        double weight;
        int userIndex;
+       double utility;
     };
 
 
@@ -59,6 +60,8 @@ namespace ns3 {
             double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe);
             double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow);
 
+            void setUtility(vector<long int>* vp, map<int, double>* up);
+
             //first int is AP index, the vector  is the set of flows under that AP
             std::map<int, vector<long int> > apToFlowSet;
 
@@ -69,7 +72,7 @@ namespace ns3 {
             std::map<int, vector<long int> > userFlowList;
 
             //the AP indices that are assigned 
-	    std::vector<int> assigned;
+	        std::vector<int> assigned;
 
             //the first int is the user index 
             //second double LTE weight of the flow 
@@ -77,6 +80,10 @@ namespace ns3 {
 
             std::map<int, double>* wifiW;
             std::map<int, double>* lteW;
+
+            //these two are for perserving the utility values
+            std::map<int, double> uMax;
+            std::map<int,double> uCalc;
 
 
             std::map<int, int>* capMap;

@@ -463,8 +463,20 @@ void MyController::doScheduling(){
             return u;
         }
 
-            void FlowScheduler::setUtility(vector<long int>* vp, vector<double>* up)
+    void FlowScheduler::setUtility(vector<long int>* vp, map<int, double>* up)
 {
+    for(unsigned int i =0; i< vp->size(); i++)
+    {
+        FlowInfoItem* fp = pallflow->find((*vp)[i])->second;
+        if(up->find(i) == up->end())
+        {
+            cout<<"find err in setUtility"<<endl;
+            exit(0);
+
+        }
+        fp->utility = (*up)[i];
+    }
+
 }
 
         double FlowScheduler::findMaxConfig(int apIndex, unsigned int* result, int* nflowRe) {
@@ -516,7 +528,7 @@ void MyController::doScheduling(){
             }//for
             cerr << "maxV=" << maxV << " result " << *result << endl;
             //set the utility of vv to uMax
-            //setUtility(&vv, &uMax); 
+            setUtility(&vv, &uMax); 
 
             delete[] re;
             return maxV;
