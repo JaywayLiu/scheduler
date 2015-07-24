@@ -344,8 +344,8 @@ main (int argc, char *argv[])
   flowLenSeconds->SetAttribute ("Max", DoubleValue (simTime));
 
   Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
-  flowSizebps->SetAttribute ("Min", DoubleValue (5000));
-  flowSizebps->SetAttribute ("Max", DoubleValue (2000000));
+  flowSizebps->SetAttribute ("Min", DoubleValue (1000000));
+  flowSizebps->SetAttribute ("Max", DoubleValue (3000000));
   
   controller->setUENumber(nWiFiAPs * nUesPerWiFiAp);
   controller->setDefaultSINR();
@@ -375,6 +375,8 @@ main (int argc, char *argv[])
          dFlLen = (dFlStart + dFlLen)>simTime?simTime-dFlStart-0.2:dFlLen;
          nFlSize = flowSizebps->GetInteger();
          nTotalFlSize += nFlSize;
+
+         controller->setOrgFlow(0, dFlStart, dFlLen, nFlSize);
          MyOnOffHelper appHelper ("ns3::UdpSocketFactory", brPort, InetSocketAddress(premoteHostAddr[0],brPort), brPort+1, 
                                   InetSocketAddress(premoteHostAddr[u/nUesPerWiFiAp+1],brPort+1));
          appHelper.SetConstantRate(nFlSize, 1024);
