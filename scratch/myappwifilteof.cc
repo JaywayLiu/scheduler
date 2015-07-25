@@ -42,6 +42,8 @@
 #include "ns3/trace-helper.h"
 
 using namespace ns3;
+using std::cout;
+using std::endl;
 
 /*
  * Simple simulation program using the emulated EPC.
@@ -64,12 +66,15 @@ main (int argc, char *argv[])
   uint16_t nEnbs = 1;
   uint16_t nWiFiAPs = 4;
   uint16_t nUesPerWiFiAp = 4;
-  
+  uint16_t stype=0;
+
   double simTime = 50.1;
   double distance = 1000.0;
 
   // Command line arguments
   CommandLine cmd;
+ cmd.AddValue("schedulerType", "scheduler type, 0 default, 1 random, 2 average", stype);
+
   cmd.AddValue("nEnbs", "Number of eNBs", nEnbs);
   cmd.AddValue("nWiFiAPs", "Number of WiFi APs", nWiFiAPs);
   cmd.AddValue("nUesPerWiFiAp", "Number of UEs per WiFi APs", nUesPerWiFiAp);
@@ -349,6 +354,9 @@ main (int argc, char *argv[])
   
   controller->setUENumber(nWiFiAPs * nUesPerWiFiAp);
   controller->setDefaultSINR();
+cout<< "stype = "<<stype<<endl;
+controller->setSType(stype);
+
 
   int nFlSize;
   double dFlStart, dFlLen; 
