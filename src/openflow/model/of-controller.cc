@@ -655,7 +655,7 @@ void FlowScheduler::updateOldUtility(double lteSumF)
 
         }
         int userI = fit->second->userIndex;
-        fwSum[userI] += fit->second->dSize * fit->second->weight; 
+        fwSum[userI] += (fit->second->dSize) * (fit->second->weight); 
         map<int, double>::iterator findit = lteW->find(userI);
         if(findit == lteW->end())
         {
@@ -708,7 +708,7 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
 
     //vector<int> result;
     randomp->SetAttribute("Min", DoubleValue(0));
-    randomp->SetAttribute("Max", DoubleValue(10000000));
+    randomp->SetAttribute("Max", DoubleValue(100000000));
 
     //for every wifi ap that has flows
 
@@ -735,9 +735,14 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
                     pallflow->find(vv[i])->second->nOnNetwork = pallflow->find(vv[i])->second->nAvailLTEBS;
                     lteFlowIDs.push_back(vv[i]);
                 }
-                else
+                else if(plan[i] ==1)
                 {
                     pallflow->find(vv[i])->second->nOnNetwork = pallflow->find(vv[i])->second->nAvailWiFiAP;
+                }
+                else
+                {
+                    cout<<"plan error "<<i <<"  "<<plan[i]<<endl;
+                    exit(0);
                 }
             }
         }//for i
@@ -834,7 +839,9 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
 
                 //cerr << "nflow *" << nflow << endl;
                 int* re = new int[nflowF];
-                std::fill(re, re+sizeof(re), -1);
+                for(int ii=0; ii<nflowF; ii++)
+                    re[ii] = -1;
+                //std::fill(re, re+sizeof(re), -1);
                 
                 //translate the schedule
                 tran(maxConfigF, re, nflowF);
