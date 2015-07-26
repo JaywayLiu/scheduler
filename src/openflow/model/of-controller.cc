@@ -236,7 +236,9 @@ void MyController::updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time 
 void MyController::doScheduling(){
     std::cout<<std::endl<<"@ "<<Simulator::Now()<<" Call Scheduling" <<std::endl;
     updateFlowStat();
-    pmyScheduler->makeDecisions(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
+    //pmyScheduler->makeDecisions(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
+    pmyScheduler->makeDecisionsEven(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
+   
     //std::cout<<"FlowMapSize "<<mapAllFlows.size()<<std::endl;
 }
 
@@ -817,29 +819,113 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
 
         }
 	////////////////////////////////////////////////////////////////////////////////////////////////ljw
-/*
+int max(int a, int b){
+    return a>b?a:b;
+}
+double transfer2WiFi(std::vector<FlowInfoItem*>& FlowVec, double dAmount){
+  std::vector<FlowInfoItem*> transFlow;
+  int n = FlowVec.size();
+  int w = ((int)dAmount)/100;
+  int dp[n+1][w+1];
+  memset(dp, 0, sizeof(dp)); 
+  int i, j;
+  std::cout<<" n "<<n<<" w "<<w<<std::endl;
+  for(i=1;i<=n;i++){
+     for(j=0;j<=w;j++){
+          if(j - ((int)FlowVec[i-1]->dSize)/100 < 0)
+              dp[i][j] = dp[i-1][j];
+          else
+              dp[i][j] = max(dp[i-1][j], dp[i-1][j-((int)FlowVec[i-1]->dSize)/100] + ((int)FlowVec[i-1]->dSize)/100);
+     }
+  }
+  std::cout<<"Transfered "<<dp[n][w]*100<<" of "<<dAmount<<std::endl;
 
-void FlowScheduler::makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>*){
+  for(i=n, j=w; i>=1; i--){
+     if(j - ((int)FlowVec[i-1]->dSize)/100 >=0 && dp[i][j] ==  dp[i-1][j-((int)FlowVec[i-1]->dSize)/100] + ((int)FlowVec[i-1]->dSize)/100){
+         std::cout<<"put in flow "<<FlowVec[i-1]->nFlowId<<" size "<<(int)FlowVec[i-1]->dSize<<std::endl;
+         
+         FlowVec[i-1]->nAvailLTEBS = -1;
+         j = j - ((int)FlowVec[i-1]->dSize)/100;
+     }
+  }
+  //std::cout<<std::endl;
+  double dFinalAmount = 0;
+  for(i=0; i<n;i++){
+     if(FlowVec[i]->nAvailLTEBS == -1){
+        FlowVec[i]->nAvailLTEBS = 0;
+        FlowVec[i]->nOnNetwork = FlowVec[i]->nAvailWiFiAP;
+        dFinalAmount += FlowVec[i]->dSize; 
+     }
+     else
+        FlowVec[i]->nOnNetwork = FlowVec[i]->nAvailLTEBS;
+  }
+  
+ std::cout<<"Final Transfered "<<dFinalAmount<<std::endl<<std::endl;
 
+  
+  return dFinalAmount;
+}
+
+void FlowScheduler::makeDecisionsEven(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt){
+    
+    std::map<int, double> mapAPSize;
+    std::map<int, std::vector<FlowInfoItem*>*> mapAPFlow;
     std::map<long int, FlowInfoItem*>::iterator flit =  pallflow->begin();
     while(flit != pallflow->end()){
-       std::cout<<"Schedule flow "<<flit->second->nFlowId<<" ";
-       printIPAddress(ntohl(flit->second->flowKey.flow.nw_src));
-       std::cout<<(ntohs(flit->second->flowKey.flow.tp_src))<<" onnet "<<flit->second->nOnNetwork <<" avlte "<<flit->second->nAvailLTEBS<<" avwifi "<< flit->second->nAvailWiFiAP<<" size "<<flit->second->dSize<<" to ";
-    
-       if(flit->second->nOnNetwork == 0){
-           flit->second->nOnNetwork = flit->second->nAvailWiFiAP;
-           std::cout<<"WiFi "<<flit->second->nAvailWiFiAP<<std::endl;     
+       if(mapAPSize.find(flit->second->nAvailLTEBS) != mapAPSize.end()){
+          mapAPSize[flit->second->nAvailLTEBS] += flit->second->dSize;
+          mapAPFlow[flit->second->nAvailLTEBS]->push_back(flit->second);
        }
        else{
-           flit->second->nOnNetwork = flit->second->nAvailLTEBS;
-           std::cout<<"LTE "<<flit->second->nAvailLTEBS<<std::endl;
+          mapAPSize[flit->second->nAvailLTEBS] = flit->second->dSize;
+          std::vector<FlowInfoItem*>* pFlowVec = new std::vector<FlowInfoItem*>;
+          pFlowVec->push_back(flit->second);
+          mapAPFlow[flit->second->nAvailLTEBS] = pFlowVec;
        }
+       
+       if(mapAPSize.find(flit->second->nAvailWiFiAP) != mapAPSize.end()){
+          mapAPSize[flit->second->nAvailWiFiAP] += flit->second->dSize;
+          mapAPFlow[flit->second->nAvailWiFiAP]->push_back(flit->second);
+       }
+       else{
+          mapAPSize[flit->second->nAvailWiFiAP] = flit->second->dSize;
+          std::vector<FlowInfoItem*>* pFlowVec = new std::vector<FlowInfoItem*>;
+          pFlowVec->push_back(flit->second);
+          mapAPFlow[flit->second->nAvailWiFiAP] = pFlowVec;
+       }      
        ++flit;
    }
-} 
+   double dAve = mapAPSize[0]/mapAPSize.size();
+   std::map<int, double>::iterator minit, asit;
+   asit = mapAPSize.begin(); 
+   while(asit != mapAPSize.end()){
+       std::cout<<"AP "<<asit->first<<" size "<<asit->second<<std::endl;
+       ++asit;
+   }
 
-*/
+   while(mapAPSize.size()>1){      
+      asit = minit = mapAPSize.begin();
+      ++asit;
+      while(asit != mapAPSize.end()){
+         if(asit->second < minit->second){
+             minit = asit;
+         }
+         ++asit;
+      }
+      double dTransfer;     
+      if(minit->second <= dAve){
+          dTransfer = minit->second;
+      }
+      else{
+         dTransfer = dAve;
+      }
+      //transfer dTransfer of asit->first to WiFi
+      std::cout<<"@Ave "<<dAve<<" transfer AP "<<minit->first<<" "<<dTransfer<<" of "<<minit->second<<std::endl;
+      dTransfer = transfer2WiFi(*mapAPFlow[minit->first], dTransfer);
+      mapAPSize.erase(minit);
+      dAve = (mapAPSize[0] - dTransfer)/mapAPSize.size();
+   }
+} 
 ///////////////////////////////////////////FlowScheduler/////////////////////////////////////////////////
 
 FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, int user):window(5), PACKETSIZE(1024){

@@ -54,8 +54,8 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
 
-void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
-
+void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp, double next);
+void checkStartEnd(double&, double&, double, double);
 
 int
 main (int argc, char *argv[])
@@ -347,6 +347,7 @@ main (int argc, char *argv[])
   flowSizebps->SetAttribute ("Min", DoubleValue (1000000));
   flowSizebps->SetAttribute ("Max", DoubleValue (3000000));
   
+
   controller->setUENumber(nWiFiAPs * nUesPerWiFiAp);
   controller->setDefaultSINR();
 
@@ -355,6 +356,7 @@ main (int argc, char *argv[])
   // Install and start applications on UEs and remote host
  
   //Ptr<Application> anApp;
+  double interval = 5;
   int nTotalFlSize = 0;
   uint16_t ulPort = 20000;
   ApplicationContainer ueApp;
@@ -375,6 +377,7 @@ main (int argc, char *argv[])
          dFlLen = (dFlStart + dFlLen)>simTime?simTime-dFlStart-0.2:dFlLen;
          nFlSize = flowSizebps->GetInteger();
          nTotalFlSize += nFlSize;
+         checkStartEnd(dFlStart, dFlLen, simTime,interval);
 
          controller->setOrgFlow(0, dFlStart, dFlLen, nFlSize);
          MyOnOffHelper appHelper ("ns3::UdpSocketFactory", brPort, InetSocketAddress(premoteHostAddr[0],brPort), brPort+1, 
@@ -409,7 +412,7 @@ main (int argc, char *argv[])
   flowMonitor = flowHelper.InstallAll();
 
 //*/
-  Simulator::Schedule(Seconds(1), doSchedule, controller, mapFlowApp);
+  Simulator::Schedule(Seconds(interval), doSchedule, controller, mapFlowApp, interval);
 
   //AsciiTraceHelper asciihelper;
   //csmahelper.EnableAsciiAll(asciihelper.CreateFileStream("csma.tr"));
@@ -422,7 +425,7 @@ main (int argc, char *argv[])
   return 0;
 }
 
-void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp){
+void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp, double next){
    controller->doScheduling();
    
    //iterate flow to enfore scheduling
@@ -434,5 +437,31 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
      pApp->SetNetwork(fit->second->nOnNetwork);
      ++fit;
    }   
-   Simulator::Schedule(Seconds(5), doSchedule, controller, pmapFlowApp);
+   Simulator::Schedule(Seconds(next), doSchedule, controller, pmapFlowApp, next);
 }
+
+void checkStartEnd(double& start, double& len, double simtime, double interval){
+     Ptr<UniformRandomVariable> randomnb = CreateObject<UniformRandomVariable> ();
+     randomnb->SetAttribute ("Min", DoubleValue (0.1));
+     randomnb->SetAttribute ("Max", DoubleValue (interval/3));
+     double end = start+len;
+
+     //std::cout<<"Origin interval "<<interval<<" start "<<start<<" end "<<end;
+     int t = (int)(start/interval);   
+     std::cout<<" start t "<<t<<" change to ";
+     if((start - t*interval)<interval/2){
+        start = (t+0.5)*interval + randomnb->GetValue();
+     }
+     //std::cout<<start<<" ";
+    
+     t = (int)(end/interval);
+     //std::cout<<" end t "<<t<<" change to ";
+     if((end - t*interval)<interval/2){
+        end = (t+0.5)*interval + randomnb->GetValue();
+        if(end>=simtime)
+          end = simtime - 0.2;
+     }
+     //std::cout<<end<<" "<<std::endl;
+     len = end - start;
+}
+
