@@ -133,7 +133,9 @@ namespace ns3 {
       void ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf* buffer);
      
       void doScheduling();
-      void updateFlowStat();
+
+      void updateFlowStat(bool isPrint);
+
       std::map<long int, FlowInfoItem*>* getAllFlowMap();
       void updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time time);
 
@@ -175,6 +177,7 @@ namespace ns3 {
       uint16_t stype; //scheduler type
 
             FILE* realUFp;
+            FILE* throughp;
     };
   }
 }

@@ -114,6 +114,7 @@ MyController::MyController() :stype(0){
      controllerlog.open("mycontroller.log");
 
         realUFp = fopen("realU.log", "w");
+        throughp = fopen("through.log", "w");
      pmyScheduler = new FlowScheduler(&controllerlog); 
 }
 
@@ -125,11 +126,12 @@ MyController::~MyController(){
         ++mit;
      }
     fclose(realUFp);
+    fclose(throughp);
 }
 
 
 
-void MyController::updateFlowStat(){
+void MyController::updateFlowStat(bool isPrint){
     //delete expired flows on switches, when all flows are removed on a switch, chain_timeout may not be called due to no inpacket
     sw_chain* pswchain;
     std::map<int, OpenFlowSwitchNetDevice* >::iterator swit = mapAPSwitch.begin();
@@ -193,7 +195,8 @@ void MyController::updateFlowStat(){
     }
     std::cout<<"Total Load "<<dTotalLoad*8<<" bps "<<std::endl;
     cout<<"Real Utility: "<<realU<<endl;
-    fprintf(realUFp, "%4.f", realU);
+    fprintf(realUFp, "%.4f\n", realU);
+    fprintf(throughp, "%.4f\n", dTotalLoad*8);
    
     double dSrcLoad = 0;
     double dNow = Simulator::Now().GetSeconds();
@@ -243,7 +246,7 @@ void MyController::updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time 
 
 void MyController::doScheduling(){
     std::cout<<std::endl<<"@ "<<Simulator::Now()<<" Call Scheduling" <<std::endl;
-    updateFlowStat();
+    updateFlowStat(false);
     if(stype ==0)
     {
     pmyScheduler->makeDecisions(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);

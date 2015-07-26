@@ -57,6 +57,7 @@ using std::endl;
 NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
 
 void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
+//void  updateFlowStat(Ptr<ns3::ofi::MyController> controller, bool isPrint);
 
 
 int
@@ -234,7 +235,7 @@ main (int argc, char *argv[])
   serverinternetIpIfaces.Add(ipv4helper.Assign (pserverDevices[0])); 
   apinternetIpIfaces.Add(ipv4helper.Assign (pclientDevices[0]));
   premoteHostAddr[0]= serverinternetIpIfaces.GetAddress (0); 
-
+//map<long int, FlowInfoItem*>::iterator fit = pallflow->find(*it);
 
   //Create WiFi
   std::vector<NetDeviceContainer> staDevices;
@@ -436,11 +437,13 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
    //iterate flow to enfore scheduling
    std::map<long int, ns3::ofi::FlowInfoItem*>* pMapFlow = controller->getAllFlowMap();
    std::map<long int, ns3::ofi::FlowInfoItem*>::iterator fit = pMapFlow->begin();
-   while(fit!=pMapFlow->end()){
+
+   while(fit!= pMapFlow->end()){
      MyOnOffApplication* pApp = dynamic_cast<MyOnOffApplication*>(GetPointer(pmapFlowApp[fit->second->nFlowId]));
      std::cout<<"Enforce flow "<<fit->first<<" on "<<fit->second->nOnNetwork<<std::endl;
      pApp->SetNetwork(fit->second->nOnNetwork);
      ++fit;
    }   
+  // Simulator::Schedule(Seconds(2.5),updateFlowStat , controller, true);
    Simulator::Schedule(Seconds(5), doSchedule, controller, pmapFlowApp);
 }
