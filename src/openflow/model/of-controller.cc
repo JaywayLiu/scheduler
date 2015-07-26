@@ -20,7 +20,6 @@ ostream cnull(NULL);
 
 #define cerr cnull
 
-
 #include <iostream>
 #include <string>
 namespace ns3 {
@@ -28,6 +27,7 @@ namespace ofi {
 NS_LOG_COMPONENT_DEFINE("MyController");
 
 
+typedef map<long int, FlowInfoItem*> fmap;
 //////////////////////////////////////////////////////controller code///////////////////////////////////////////////
 
 void printIPAddress(uint32_t address){
@@ -110,8 +110,11 @@ void MyController::ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf
 }
 
 
-MyController::MyController(){
+MyController::MyController() :stype(0){
      controllerlog.open("mycontroller.log");
+
+        realUFp = fopen("realU.log", "w");
+        throughp = fopen("through.log", "w");
      pmyScheduler = new FlowScheduler(&controllerlog); 
 }
 
@@ -122,14 +125,17 @@ MyController::~MyController(){
         delete mit->second;
         ++mit;
      }
+    fclose(realUFp);
+    fclose(throughp);
 }
 
 
 
-void MyController::updateFlowStat(){
+void MyController::updateFlowStat(bool isPrint){
     //delete expired flows on switches, when all flows are removed on a switch, chain_timeout may not be called due to no inpacket
     sw_chain* pswchain;
     std::map<int, OpenFlowSwitchNetDevice* >::iterator swit = mapAPSwitch.begin();
+    double realU = 0;
     while(swit != mapAPSwitch.end()){
         pswchain = swit->second->GetChain();
         List deleted = LIST_INITIALIZER (&deleted);
@@ -164,6 +170,8 @@ void MyController::updateFlowStat(){
        if(flow){
           updateAFlow(mit->second, flow->packet_count, ns3::Simulator::Now());
           ldit = mapAPLoad.find(mit->second->nOnNetwork);
+
+        realU+= (mit->second->weight) * log(mit->second->dSize);
           if(ldit != mapAPLoad.end())
              ldit->second += mit->second->dSize;
           else
@@ -186,6 +194,9 @@ void MyController::updateFlowStat(){
       ++ldit;
     }
     std::cout<<"Total Load "<<dTotalLoad*8<<" bps "<<std::endl;
+    cout<<"Real Utility: "<<realU<<endl;
+    fprintf(realUFp, "%.4f\n", realU);
+    fprintf(throughp, "%.4f\n", dTotalLoad*8);
    
     double dSrcLoad = 0;
     double dNow = Simulator::Now().GetSeconds();
@@ -235,10 +246,31 @@ void MyController::updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time 
 
 void MyController::doScheduling(){
     std::cout<<std::endl<<"@ "<<Simulator::Now()<<" Call Scheduling" <<std::endl;
+<<<<<<< HEAD
     updateFlowStat();
     //pmyScheduler->makeDecisions(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
+    
+=======
+    updateFlowStat(false);
+    if(stype ==0)
+    {
+    pmyScheduler->makeDecisions(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
+    }
+    else if(stype ==1)
+    {
+    pmyScheduler->makeDecisionsRandom(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt, 0);
+    }
+    else if(stype == 2)
+    {
     pmyScheduler->makeDecisionsEven(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
-   
+    }
+    else
+    {
+        cout<<"arg error in doScheduling"<<endl;
+        exit(0);
+    }
+
+>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
     //std::cout<<"FlowMapSize "<<mapAllFlows.size()<<std::endl;
 }
 
@@ -615,24 +647,60 @@ void FlowScheduler::updateOldUtility(double lteSumF)
 }
 
 
-
+//input is all the lte flow ids
   double FlowScheduler::calcLteU(vector<long int>* lid)
 {
-    /*
+
+    //this is from userindex to the weight of the user, only for the users to lte
     map<int, double> lteUserW;
+
+    //double is the w_f * size, int is the user index, only calc the user's flow on lte
+    map<int, double> fwSum;
+    double uLte = 0;
     for(vector<long int>::iterator it= lid->begin(); it != lid->end(); it++)
     {
-        int userI = pallflow->find(*it)->second->userIndex;
+        map<long int, FlowInfoItem*>::iterator fit = pallflow->find(*it);
+
+        if(fit == pallflow->end())
+        {
+            cout<<"find user index error in calcLteU"<<endl;
+            exit(0);
+
+        }
+        int userI = fit->second->userIndex;
+        fwSum[userI] += (fit->second->dSize) * (fit->second->weight); 
         map<int, double>::iterator findit = lteW->find(userI);
         if(findit == lteW->end())
         {
-            cerr<<"error find userI in calcLteU"<<endl;
+            cout<<"error find userI in calcLteU"<<endl;
+            exit(0);
         }
 
-        lteUserW[userI] = lteW[userI]->second;
+        lteUserW[userI] = lteW->find(userI)->second;
     }
-    */
-    return 0;
+
+    //calc the sum of user weights
+    double lteSum=0;
+    for(map<int, double>::iterator it= lteUserW.begin(); it != lteUserW.end(); it++)
+    {
+        lteSum += it->second;
+    }
+
+
+    for(vector<long int>::iterator it= lid->begin(); it != lid->end(); it++)
+    {
+        map<long int, FlowInfoItem*>::iterator fit = pallflow->find(*it);
+
+        int userI = fit->second->userIndex;
+       double uw= lteUserW[userI]; 
+       double fw= (fit->second->weight)  * (fit->second->dSize);    
+        double through =(uw / lteSum) * (capMap->find(0)->second) *(fw/(fwSum.find(userI)->second));
+        assert(through > 0);
+        uLte +=log(through) * (fit->second->weight) ; 
+
+    }
+
+    return uLte;
 
 
 }
@@ -647,12 +715,13 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
     pallflow = pallflow0;
     double uAll =0;
     //vector<long int> lteFlowIDs;
+    lteFlowIDs.clear();
 
     divideByCoverage();
 
     //vector<int> result;
     randomp->SetAttribute("Min", DoubleValue(0));
-    randomp->SetAttribute("Max", DoubleValue(10000000));
+    randomp->SetAttribute("Max", DoubleValue(100000000));
 
     //for every wifi ap that has flows
 
@@ -674,15 +743,20 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
             plan[i] = (randomp->GetInteger()) %2;
             if(!dryrun)
             {
-            if(plan[i] ==0)
-            {
-                pallflow->find(vv[i])->second->nOnNetwork = pallflow->find(vv[i])->second->nAvailLTEBS;
-                lteFlowIDs.push_back(vv[i]);
-            }
-            else
-            {
-                pallflow->find(vv[i])->second->nOnNetwork = pallflow->find(vv[i])->second->nAvailWiFiAP;
-            }
+                if(plan[i] ==0)
+                {
+                    pallflow->find(vv[i])->second->nOnNetwork = pallflow->find(vv[i])->second->nAvailLTEBS;
+                    lteFlowIDs.push_back(vv[i]);
+                }
+                else if(plan[i] ==1)
+                {
+                    pallflow->find(vv[i])->second->nOnNetwork = pallflow->find(vv[i])->second->nAvailWiFiAP;
+                }
+                else
+                {
+                    cout<<"plan error "<<i <<"  "<<plan[i]<<endl;
+                    exit(0);
+                }
             }
         }//for i
 
@@ -695,8 +769,8 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
 
     double ulte = calcLteU(&lteFlowIDs);
     uAll+= ulte;
-    cout<<"uAll random"<<endl;
-
+    fprintf(ulogFpR, "%.5f\n", uAll);
+    cout<<"uAll random "<<uAll<<endl;
 
 }
 
@@ -720,6 +794,10 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
 
             double obMax = 0;
             double uAll = 0;
+
+            for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++) {
+              it->second->utility = -1;
+            }
             
             //exit(0);
             divideByCoverage();
@@ -738,13 +816,16 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
 
 
             unsigned int maxConfig = 0;
+            unsigned int maxConfigF = 0;
             int maxAPIndex = 0;
             int nflow = 0;
+            int nflowF =0;
             //std::map<int, FlowInfoItem*> cflow;
             while (!toDoList.empty()) {
                 maxAPIndex = 0;
                 obMax = 0;
                 maxConfig = 0;
+
 
                 double lteSumM =0;
                 double lteSumC =0;
@@ -764,28 +845,51 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
                         obMax = v;
                         maxAPIndex = *tit;
                         lteSumM = lteSumC;
+                        maxConfigF = maxConfig;
+                        nflowF = nflow;
                     }//if
                 }//for
 
                 //cerr << "nflow *" << nflow << endl;
-                int* re = new int[nflow];
+                int* re = new int[nflowF];
+                for(int ii=0; ii<nflowF; ii++)
+                    re[ii] = -1;
+                //std::fill(re, re+sizeof(re), -1);
                 
                 //translate the schedule
-                tran(maxConfig, re, nflow);
+                tran(maxConfigF, re, nflowF);
 
                 vector<long int>& vv = apToFlowSet.find(maxAPIndex)->second;
                 int jj = 0;
 
                 for (vector<long int>::iterator it = vv.begin(); it != vv.end(); it++, jj++) {
+                        fmap::iterator fit = pallflow->find(*it);
+                        if(fit == pallflow->end())
+                        {
+                            cout<<"error find in make decision"<<endl;
+                            exit(0);
+                        }
                     if (re[jj] == 0) {
-                        pallflow->find(*it)->second->nOnNetwork = pallflow->find(*it)->second->nAvailLTEBS;
-                        int userI = pallflow->find(*it)->second->userIndex;
+                        
+                        fit->second->nOnNetwork = fit->second->nAvailLTEBS;
+                        int userI = fit->second->userIndex;
+                        if(lteW->find(userI) == lteW->end())
+                        {
+                            cout<<"error find lteW"<<endl;
+                            exit(0);
+                        }
                         lteFlows[userI] = lteW->find(userI)->second;
                         lteFlowIDs.push_back(*it);
 
                     } else if (re[jj] == 1) {
-                        pallflow->find(*it)->second->nOnNetwork = pallflow->find(*it)->second->nAvailWiFiAP;
+                        fit->second->nOnNetwork = fit->second->nAvailWiFiAP;
 
+                    }
+                    else
+                    {
+                        cout<<"re value error "<<jj <<" "<<*it<<" "<<re[jj]<<endl;
+                        cout<<"maxconig "<<maxConfigF<<" nflow "<<nflowF<<endl;
+                        exit(0);
                     }
                 }
 
@@ -808,6 +912,7 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
            
 
             for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++) {
+                assert(it->second->utility >0);
                 uAll += it->second->utility;
 
             } 

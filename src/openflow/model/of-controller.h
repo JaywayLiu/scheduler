@@ -57,14 +57,18 @@ namespace ns3 {
     public:
        FlowScheduler(std::ofstream* output):pOutStream(output){
         ulogFp = fopen("utility.log", "w");
+        ulogFpR = fopen("utilityRandom.log", "w");
      randomp = CreateObject<UniformRandomVariable> ();
        
        };
        ~FlowScheduler()
        {
            fclose(ulogFp);
+           fclose(ulogFpR);
        }
-       void makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt); 
+       void makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt);
+
+       //the dry run option enable user to call it without changing the real scheduling, only print the utility value
        void makeDecisionsRandom(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt, int dryrun); 
 
        void makeDecisionsEven(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt); 
@@ -73,7 +77,7 @@ namespace ns3 {
        //??do we need this
        std::ofstream* pOutStream;
 
-                   void divideByCoverage();
+            void divideByCoverage();
             double sumAllLTEWeights();
             double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe, double* lteSumP);
             double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, double* lteSum, int isWiFiOnly);
@@ -119,6 +123,7 @@ namespace ns3 {
             std::map<int, int>* capMap;
             std::map<long int, FlowInfoItem*>* pallflow;
             FILE* ulogFp;
+            FILE* ulogFpR;
              Ptr<UniformRandomVariable> randomp; };
 
  
@@ -130,11 +135,14 @@ namespace ns3 {
       void ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf* buffer);
      
       void doScheduling();
-      void updateFlowStat();
+
+      void updateFlowStat(bool isPrint);
+
       std::map<long int, FlowInfoItem*>* getAllFlowMap();
       void updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time time);
 
       void setAPCap(int apid, int cap) {mapAPCap[apid] = cap;}
+      void setSType(uint16_t tt) {stype = tt;}
       void setSrcIPWifi(uint32_t ip, int apid) {mapSrcIPWifi[ip] = apid;}
       void setSwitchAP(OpenFlowSwitchNetDevice* psw, int apid) {mapSwitchAP[psw] = apid;}
       void setAPSwitch(int apid, OpenFlowSwitchNetDevice* psw) {mapAPSwitch[apid] = psw;}
@@ -166,7 +174,12 @@ namespace ns3 {
       std::vector<OrgFlow> vecOrgFlow;
 
       FlowScheduler *pmyScheduler;
-      std::ofstream controllerlog; 
+      std::ofstream controllerlog;
+
+      uint16_t stype; //scheduler type
+
+            FILE* realUFp;
+            FILE* throughp;
     };
   }
 }

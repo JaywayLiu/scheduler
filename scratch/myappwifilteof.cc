@@ -42,6 +42,8 @@
 #include "ns3/trace-helper.h"
 
 using namespace ns3;
+using std::cout;
+using std::endl;
 
 /*
  * Simple simulation program using the emulated EPC.
@@ -54,8 +56,14 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
 
+<<<<<<< HEAD
 void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp, double next);
 void checkStartEnd(double&, double&, double, double);
+=======
+void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
+//void  updateFlowStat(Ptr<ns3::ofi::MyController> controller, bool isPrint);
+
+>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 
 int
 main (int argc, char *argv[])
@@ -64,12 +72,15 @@ main (int argc, char *argv[])
   uint16_t nEnbs = 1;
   uint16_t nWiFiAPs = 4;
   uint16_t nUesPerWiFiAp = 4;
-  
+  uint16_t stype=0;
+
   double simTime = 50.1;
   double distance = 1000.0;
 
   // Command line arguments
   CommandLine cmd;
+ cmd.AddValue("schedulerType", "scheduler type, 0 default, 1 random, 2 average", stype);
+
   cmd.AddValue("nEnbs", "Number of eNBs", nEnbs);
   cmd.AddValue("nWiFiAPs", "Number of WiFi APs", nWiFiAPs);
   cmd.AddValue("nUesPerWiFiAp", "Number of UEs per WiFi APs", nUesPerWiFiAp);
@@ -229,7 +240,7 @@ main (int argc, char *argv[])
   serverinternetIpIfaces.Add(ipv4helper.Assign (pserverDevices[0])); 
   apinternetIpIfaces.Add(ipv4helper.Assign (pclientDevices[0]));
   premoteHostAddr[0]= serverinternetIpIfaces.GetAddress (0); 
-
+//map<long int, FlowInfoItem*>::iterator fit = pallflow->find(*it);
 
   //Create WiFi
   std::vector<NetDeviceContainer> staDevices;
@@ -350,6 +361,9 @@ main (int argc, char *argv[])
 
   controller->setUENumber(nWiFiAPs * nUesPerWiFiAp);
   controller->setDefaultSINR();
+cout<< "stype = "<<stype<<endl;
+controller->setSType(stype);
+
 
   int nFlSize;
   double dFlStart, dFlLen; 
@@ -431,13 +445,19 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
    //iterate flow to enfore scheduling
    std::map<long int, ns3::ofi::FlowInfoItem*>* pMapFlow = controller->getAllFlowMap();
    std::map<long int, ns3::ofi::FlowInfoItem*>::iterator fit = pMapFlow->begin();
-   while(fit!=pMapFlow->end()){
+
+   while(fit!= pMapFlow->end()){
      MyOnOffApplication* pApp = dynamic_cast<MyOnOffApplication*>(GetPointer(pmapFlowApp[fit->second->nFlowId]));
      std::cout<<"Enforce flow "<<fit->first<<" on "<<fit->second->nOnNetwork<<std::endl;
      pApp->SetNetwork(fit->second->nOnNetwork);
      ++fit;
    }   
+<<<<<<< HEAD
    Simulator::Schedule(Seconds(next), doSchedule, controller, pmapFlowApp, next);
+=======
+  // Simulator::Schedule(Seconds(2.5),updateFlowStat , controller, true);
+  // Simulator::Schedule(Seconds(5), doSchedule, controller, pmapFlowApp);
+>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 }
 
 void checkStartEnd(double& start, double& len, double simtime, double interval){
