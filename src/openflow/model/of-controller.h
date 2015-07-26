@@ -142,7 +142,7 @@ namespace ns3 {
       void updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time time);
 
       void setAPCap(int apid, int cap) {mapAPCap[apid] = cap;}
-      void setSType(uint16_t tt) {stype = tt;}
+      void setSType(uint16_t tt);
       void setSrcIPWifi(uint32_t ip, int apid) {mapSrcIPWifi[ip] = apid;}
       void setSwitchAP(OpenFlowSwitchNetDevice* psw, int apid) {mapSwitchAP[psw] = apid;}
       void setAPSwitch(int apid, OpenFlowSwitchNetDevice* psw) {mapAPSwitch[apid] = psw;}

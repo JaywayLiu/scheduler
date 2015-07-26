@@ -109,12 +109,24 @@ void MyController::ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf
   return;
 }
 
+void MyController::setSType(uint16_t tt){
+   stype = tt;
+   if(stype == 0){
+        realUFp = fopen("realU0.log", "w");
+        throughp = fopen("through0.log", "w");
+     }
+     else if(stype == 1){
+        realUFp = fopen("realU1.log", "w");
+        throughp = fopen("through1.log", "w");
+     }
+     else{
+        realUFp = fopen("realU2.log", "w");
+        throughp = fopen("through2.log", "w");
+     }
+}
 
 MyController::MyController() :stype(0){
-     controllerlog.open("mycontroller.log");
-
-        realUFp = fopen("realU.log", "w");
-        throughp = fopen("through.log", "w");
+     controllerlog.open("mycontroller.log");     
      pmyScheduler = new FlowScheduler(&controllerlog); 
 }
 
@@ -170,8 +182,7 @@ void MyController::updateFlowStat(bool isPrint){
        if(flow){
           updateAFlow(mit->second, flow->packet_count, ns3::Simulator::Now());
           ldit = mapAPLoad.find(mit->second->nOnNetwork);
-
-        realU+= (mit->second->weight) * log(mit->second->dSize);
+          realU+= (mit->second->weight) * log(mit->second->dSize);
           if(ldit != mapAPLoad.end())
              ldit->second += mit->second->dSize;
           else
@@ -193,13 +204,7 @@ void MyController::updateFlowStat(bool isPrint){
       std::cout<<"AP "<<ldit->first<<" Load "<<ldit->second*8<<" bps "<<std::endl;
       ++ldit;
     }
-    std::cout<<"Total Load "<<dTotalLoad*8<<" bps "<<std::endl;
-    cout<<"Real Utility: "<<realU<<endl;
-    if(isPrint)
-    {
-    fprintf(realUFp, "%.4f\n", realU);
-    fprintf(throughp, "%.4f\n", dTotalLoad*8);
-    }
+    std::cout<<"Total Load "<<dTotalLoad*8<<" bps "<<std::endl;  
    
     double dSrcLoad = 0;
     double dNow = Simulator::Now().GetSeconds();
@@ -208,6 +213,14 @@ void MyController::updateFlowStat(bool isPrint){
             dSrcLoad += vecOrgFlow[i].nSize;
     }
     std::cout<<"Total Src Load "<<dSrcLoad<<" bps "<<std::endl;
+   
+    cout<<"Real Utility: "<<realU<<endl;
+
+    if(isPrint)
+    {
+       fprintf(realUFp, "@%.4f with real U %.4f\n", dNow, realU);
+       fprintf(throughp, "@%.4f  src throuput %.4f bps real throuput %.4f bps \n", dNow, dSrcLoad, dTotalLoad*8);
+    }
     
 }
  

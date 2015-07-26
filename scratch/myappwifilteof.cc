@@ -79,7 +79,7 @@ main (int argc, char *argv[])
 
   // Command line arguments
   CommandLine cmd;
- cmd.AddValue("schedulerType", "scheduler type, 0 default, 1 random, 2 average", stype);
+  cmd.AddValue("schedulerType", "scheduler type, 0 default, 1 random, 2 average", stype);
 
   cmd.AddValue("nEnbs", "Number of eNBs", nEnbs);
   cmd.AddValue("nWiFiAPs", "Number of WiFi APs", nWiFiAPs);
@@ -361,8 +361,9 @@ main (int argc, char *argv[])
 
   controller->setUENumber(nWiFiAPs * nUesPerWiFiAp);
   controller->setDefaultSINR();
-cout<< "stype = "<<stype<<endl;
-controller->setSType(stype);
+  //stype = 2;
+  cout<< "stype = "<<stype<<endl;
+  controller->setSType(stype);
 
 
   int nFlSize;
@@ -463,6 +464,7 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
 
 void updateFlowStat(Ptr<ns3::ofi::MyController> controller)
 {
+   std::cout<<"@"<<Simulator::Now()<<" Do updateFlowStat"<<std::endl;
    controller->updateFlowStat(true);
    Simulator::Schedule(Seconds(5), updateFlowStat, controller);
 }
