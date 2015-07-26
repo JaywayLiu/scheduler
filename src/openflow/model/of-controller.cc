@@ -433,12 +433,14 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
 
             double* ww = new double[userList.size()];
             double* lw = new double[userList.size()];
-           
+            int * nWiFi = new int[userList.size()];
+
             //cerr << "list size:" << userList.size() << endl;
 
             for (unsigned int i = 0; i < userList.size(); i++) {
                 ww[i] = 0;
                 lw[i] = 0;
+                nWiFi[i] = 0;
             }
 
             //for every user, iterate all the flows
@@ -453,7 +455,12 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                     int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
                     //	    cerr<<"npos"<<npos<<endl;
                     if (re[npos] == 1)
+                    {
                         isWiFi = true;
+                        (nWiFi[i])++;
+                        //cout<<"nWiFi"<<nWiFi[userI]<<endl;
+                        //exit(0);
+                    }
                     else if (re[npos] == 0)
                         isLTE = true;
                     else {
@@ -496,7 +503,7 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                 double resourceL = 0;
 
                 if (wifiSum != 0) {
-                    resourceW = ww[i] / wifiSum * (capMap->find(apIndex)->second);
+                    resourceW = ww[i] / wifiSum * ((capMap->find(apIndex)->second) / nWiFi[i]);
 
                 }
                 if (lteSum != 0) {
@@ -558,10 +565,14 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
             //the weights of lte flows already assigned
             double oldw = sumOldLteUtility(lteSum);
             //cout<< "oldw="<<oldw<<endl;
-            u += oldw;
+            if(!isWiFiOnly)
+            {
+                u += oldw;
+            }
 
                 delete[] ww;
                 delete[] lw;
+                delete[] nWiFi;
 
 
             cerr << "u=" << u << endl;
@@ -706,10 +717,9 @@ void FlowScheduler::updateOldUtility(double lteSumF)
     for(vector<long int>::iterator it= lid->begin(); it != lid->end(); it++)
     {
         map<long int, FlowInfoItem*>::iterator fit = pallflow->find(*it);
-
         int userI = fit->second->userIndex;
-       double uw= lteUserW[userI]; 
-       double fw= (fit->second->weight)  * (fit->second->dSize);    
+        double uw= lteUserW[userI]; 
+        double fw= (fit->second->weight)  * (fit->second->dSize);    
         double through =(uw / lteSum) * (capMap->find(0)->second) *(fw/(fwSum.find(userI)->second));
         assert(through > 0);
         uLte +=log(through) * (fit->second->weight) ; 
@@ -782,8 +792,11 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
         delete[] plan;
 
     }//for every wifi ap
+    cout<<"uAll wifi part"<< uAll<<endl;
 
     double ulte = calcLteU(&lteFlowIDs);
+
+    cout<<"uAll lte part"<< ulte<<endl;
     uAll+= ulte;
     fprintf(ulogFpR, "%.5f\n", uAll);
     cout<<"uAll random "<<uAll<<endl;

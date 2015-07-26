@@ -56,8 +56,8 @@ namespace ns3 {
 
     public:
        FlowScheduler(std::ofstream* output):pOutStream(output){
-        ulogFp = fopen("utility.log", "w");
-        ulogFpR = fopen("utilityRandom.log", "w");
+        ulogFp = fopen("utility0.log", "w");
+        ulogFpR = fopen("utility1.log", "w");
      randomp = CreateObject<UniformRandomVariable> ();
        
        };

@@ -71,7 +71,7 @@ main (int argc, char *argv[])
  
   uint16_t nEnbs = 1;
   uint16_t nWiFiAPs = 4;
-  uint16_t nUesPerWiFiAp = 4;
+  uint16_t nUesPerWiFiAp = 5;
   uint16_t stype=0;
 
   double simTime = 50.1;
@@ -354,9 +354,15 @@ main (int argc, char *argv[])
   flowLenSeconds->SetAttribute ("Min", DoubleValue (3));
   flowLenSeconds->SetAttribute ("Max", DoubleValue (simTime));
 
-  Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
-  flowSizebps->SetAttribute ("Min", DoubleValue (1000000));
-  flowSizebps->SetAttribute ("Max", DoubleValue (3000000));
+  //Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
+  Ptr<NormalRandomVariable> flowSizebps = CreateObject<NormalRandomVariable> ();
+  //ljw size random
+flowSizebps->SetAttribute ("Mean", DoubleValue (2000000));
+flowSizebps->SetAttribute ("Variance", DoubleValue (1000000));
+flowSizebps->SetAttribute ("Bound", DoubleValue (5000000));
+
+  //flowSizebps->SetAttribute ("Min", DoubleValue (1000000));
+  //flowSizebps->SetAttribute ("Max", DoubleValue (3000000));
   
 
   controller->setUENumber(nWiFiAPs * nUesPerWiFiAp);
