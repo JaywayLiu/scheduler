@@ -503,7 +503,15 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                 double resourceL = 0;
 
                 if (wifiSum != 0) {
+                    if(nWiFi[i] >0)
+                    {
                     resourceW = ww[i] / wifiSum * ((capMap->find(apIndex)->second) / nWiFi[i]);
+                    }
+                    else
+                    {
+
+                    resourceW = 0;
+                    }
 
                 }
                 if (lteSum != 0) {
