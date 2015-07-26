@@ -246,11 +246,11 @@ void MyController::updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time 
 
 void MyController::doScheduling(){
     std::cout<<std::endl<<"@ "<<Simulator::Now()<<" Call Scheduling" <<std::endl;
-<<<<<<< HEAD
-    updateFlowStat();
+//<<<<<<< HEAD
+    //updateFlowStat(true);
     //pmyScheduler->makeDecisions(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
     
-=======
+//=======
     updateFlowStat(false);
     if(stype ==0)
     {
@@ -270,7 +270,7 @@ void MyController::doScheduling(){
         exit(0);
     }
 
->>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
+//>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
     //std::cout<<"FlowMapSize "<<mapAllFlows.size()<<std::endl;
 }
 

@@ -56,14 +56,14 @@ using std::endl;
 
 NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
 
-<<<<<<< HEAD
+//<<<<<<< HEAD
 void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp, double next);
 void checkStartEnd(double&, double&, double, double);
-=======
+//=======
 //void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
 //void  updateFlowStat(Ptr<ns3::ofi::MyController> controller, bool isPrint);
 
->>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
+//>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 
 int
 main (int argc, char *argv[])
@@ -72,7 +72,7 @@ main (int argc, char *argv[])
   uint16_t nEnbs = 1;
   uint16_t nWiFiAPs = 4;
   uint16_t nUesPerWiFiAp = 4;
-  uint16_t stype=0;
+  uint16_t stype=2;
 
   double simTime = 50.1;
   double distance = 1000.0;
@@ -452,12 +452,12 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
      pApp->SetNetwork(fit->second->nOnNetwork);
      ++fit;
    }   
-<<<<<<< HEAD
+//<<<<<<< HEAD
    Simulator::Schedule(Seconds(next), doSchedule, controller, pmapFlowApp, next);
-=======
+//=======
   // Simulator::Schedule(Seconds(2.5),updateFlowStat , controller, true);
   // Simulator::Schedule(Seconds(5), doSchedule, controller, pmapFlowApp);
->>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
+//>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 }
 
 void checkStartEnd(double& start, double& len, double simtime, double interval){
