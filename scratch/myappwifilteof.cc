@@ -61,7 +61,7 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
 void checkStartEnd(double&, double&, double, double);
 //=======
 //void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
-//void  updateFlowStat(Ptr<ns3::ofi::MyController> controller, bool isPrint);
+void  updateFlowStat(Ptr<ns3::ofi::MyController> controller);
 
 //>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 
@@ -427,6 +427,7 @@ controller->setSType(stype);
 
 //*/
   Simulator::Schedule(Seconds(interval), doSchedule, controller, mapFlowApp, interval);
+  Simulator::Schedule(Seconds(interval/2.0f), updateFlowStat, controller);
 
   //AsciiTraceHelper asciihelper;
   //csmahelper.EnableAsciiAll(asciihelper.CreateFileStream("csma.tr"));
@@ -458,6 +459,12 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
   // Simulator::Schedule(Seconds(2.5),updateFlowStat , controller, true);
   // Simulator::Schedule(Seconds(5), doSchedule, controller, pmapFlowApp);
 //>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
+}
+
+void updateFlowStat(Ptr<ns3::ofi::MyController> controller)
+{
+   controller->updateFlowStat(true);
+   Simulator::Schedule(Seconds(5), updateFlowStat, controller);
 }
 
 void checkStartEnd(double& start, double& len, double simtime, double interval){
