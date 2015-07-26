@@ -60,7 +60,7 @@ NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
 void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp, double next);
 void checkStartEnd(double&, double&, double, double);
 =======
-void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
+//void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
 //void  updateFlowStat(Ptr<ns3::ofi::MyController> controller, bool isPrint);
 
 >>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
