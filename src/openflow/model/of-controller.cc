@@ -195,8 +195,11 @@ void MyController::updateFlowStat(bool isPrint){
     }
     std::cout<<"Total Load "<<dTotalLoad*8<<" bps "<<std::endl;
     cout<<"Real Utility: "<<realU<<endl;
+    if(isPrint)
+    {
     fprintf(realUFp, "%.4f\n", realU);
     fprintf(throughp, "%.4f\n", dTotalLoad*8);
+    }
    
     double dSrcLoad = 0;
     double dNow = Simulator::Now().GetSeconds();

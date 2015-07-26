@@ -72,7 +72,7 @@ main (int argc, char *argv[])
   uint16_t nEnbs = 1;
   uint16_t nWiFiAPs = 4;
   uint16_t nUesPerWiFiAp = 4;
-  uint16_t stype=2;
+  uint16_t stype=0;
 
   double simTime = 50.1;
   double distance = 1000.0;
