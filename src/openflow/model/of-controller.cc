@@ -415,7 +415,7 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
         ///is LTE
 
         double
-        FlowScheduler::calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, double* lteSumOut, int isWiFiOnly) {
+        FlowScheduler::calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, double* lteSumOut, bool isWiFiOnly) {
 
             double u = 0;
         map<int, set<int> >::iterator setit = apToUserSet.find(apIndex);
@@ -433,14 +433,15 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
 
             double* ww = new double[userList.size()];
             double* lw = new double[userList.size()];
-            int * nWiFi = new int[userList.size()];
+            //int * nWiFi = new int[userList.size()];
+            int ueCount = 0; 
 
             //cerr << "list size:" << userList.size() << endl;
 
             for (unsigned int i = 0; i < userList.size(); i++) {
                 ww[i] = 0;
                 lw[i] = 0;
-                nWiFi[i] = 0;
+                //nWiFi[i] = 0;
             }
 
             //for every user, iterate all the flows
@@ -457,7 +458,7 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                     if (re[npos] == 1)
                     {
                         isWiFi = true;
-                        (nWiFi[i])++;
+                        //(nWiFi[i])++;
                         //cout<<"nWiFi"<<nWiFi[userI]<<endl;
                         //exit(0);
                     }
@@ -470,7 +471,15 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
 
                 }//for in
                 if (isWiFi) {
-                    ww[i] = wifiW->find(userI)->second;
+
+                    assert(userI >= 0);
+                    map<int, double>::iterator wit = wifiW->find(userI);
+                    if(wit == wifiW->end())
+                    {
+                        cout<<"find userI error in calcUtility"<<endl;
+                        exit(0);
+                    }
+                    ww[i] = wit->second;
                 }
                 if (isLTE) {
                     cerr << "userI" << userI << endl;
@@ -480,13 +489,26 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                     //lw[userI] = 1;
                 }
             }//for out
+
+
             double wifiSum = 0;
             double lteSum = 0;
 
             for (unsigned int i = 0; i < userList.size(); i++) {
                 wifiSum += ww[i];
+                if(ww[i] != 0)
+                    ueCount ++;
+
                 //cout<<"ww[i]"<<i<<" "<<ww[i]<<endl;
             }
+/*
+            double discount = (10- ueCount)/10.0f;
+            if(discount <=0.00)
+            {
+                cout<<"discout"<<discout<<endl;
+            }
+            assert(discount >0.0001);
+            */
             for (unsigned int i = 0; i < userList.size(); i++) {
                 lteSum += lw[i];
             }
@@ -502,6 +524,7 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                 double resourceW = 0;
                 double resourceL = 0;
 
+                    /*
                 if (wifiSum != 0) {
                     if(nWiFi[i] >0)
                     {
@@ -513,6 +536,16 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                     resourceW = 0;
                     }
 
+                   // resourceW = ww[i] / wifiSum * ((capMap->find(apIndex)->second) * discount);
+                    resourceW = ww[i] / wifiSum * ((capMap->find(apIndex)->second));
+
+                }
+                    */
+                //cout<<"cap 0"<<capMap->find(1)->second<<endl;
+                //exit(0);
+
+                if (wifiSum != 0) {
+                resourceW = ww[i] / wifiSum * approax[ueCount];
                 }
                 if (lteSum != 0) {
                     resourceL = lw[i] / lteSum * (capMap->find(0)->second);
@@ -549,12 +582,14 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                         uFlow = (pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW));
 
                         u += uFlow;                         
-                        //assert(((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))) != 0);
-                       // cerr << "userww" << userww << endl;
-                       // assert(resourceW !=0);
-                        //assert((pallflow->find(*Fit)->second->dSize) !=0);
-                        //assert((pallflow->find(*Fit)->second->weight) !=0);
-                        //assert(!isinf((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))));
+                        assert(((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))) != 0);
+                        //cout << "userww" << userWW << endl;
+                        assert(resourceW !=0);
+                        assert(!isnan(resourceW));
+                        assert(!isnan(uFlow));
+                        assert((pallflow->find(*Fit)->second->dSize) !=0);
+                        assert((pallflow->find(*Fit)->second->weight) !=0);
+                        assert(!isinf((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))));
                     } else if (re[npos] == 0) {
                         if(!isWiFiOnly)
                         {
@@ -580,7 +615,7 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
 
                 delete[] ww;
                 delete[] lw;
-                delete[] nWiFi;
+                //delete[] nWiFi;
 
 
             cerr << "u=" << u << endl;

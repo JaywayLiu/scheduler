@@ -250,7 +250,8 @@ main (int argc, char *argv[])
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO); 
 
   for(int i=0; i<nWiFiAPs; i++){
-    controller->setAPCap(i+1,3000000);//MBps
+    //controller->setAPCap(i+1,3000000);//MBps
+    controller->setAPCap(i+1,1800000);//MBps
     std::ostringstream oss;
     oss << "wifi-default-" << i;
     Ssid ssid = Ssid (oss.str ());

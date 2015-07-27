@@ -59,12 +59,21 @@ namespace ns3 {
         ulogFp = fopen("utility0.log", "w");
         ulogFpR = fopen("utility1.log", "w");
      randomp = CreateObject<UniformRandomVariable> ();
+     approax = new float[10];
+     approax[0]= 0;
+     approax[1] =2500000; //Bps
+     approax[2] =1800000;
+     approax[3] =937500;
+     approax[4] =687500;
+     approax[5] =387500;
+     //approax[5] =10;
        
        };
        ~FlowScheduler()
        {
            fclose(ulogFp);
            fclose(ulogFpR);
+           delete[] approax;
        }
        void makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt);
 
@@ -80,7 +89,7 @@ namespace ns3 {
             void divideByCoverage();
             double sumAllLTEWeights();
             double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe, double* lteSumP);
-            double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, double* lteSum, int isWiFiOnly);
+            double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, double* lteSum, bool isWiFiOnly);
 
             void setUtility(vector<long int>* vp, map<int, double>* up);
 
@@ -124,7 +133,10 @@ namespace ns3 {
             std::map<long int, FlowInfoItem*>* pallflow;
             FILE* ulogFp;
             FILE* ulogFpR;
-             Ptr<UniformRandomVariable> randomp; };
+             Ptr<UniformRandomVariable> randomp;
+             float* approax;
+    
+    };
 
  
     class MyController : public Controller {
