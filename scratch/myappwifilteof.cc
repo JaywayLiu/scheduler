@@ -358,9 +358,9 @@ main (int argc, char *argv[])
   //Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
   Ptr<NormalRandomVariable> flowSizebps = CreateObject<NormalRandomVariable> ();
   //ljw size random
-flowSizebps->SetAttribute ("Mean", DoubleValue (2000000));
-flowSizebps->SetAttribute ("Variance", DoubleValue (1000000));
-flowSizebps->SetAttribute ("Bound", DoubleValue (5000000));
+flowSizebps->SetAttribute ("Mean", DoubleValue (1000000));
+flowSizebps->SetAttribute ("Variance", DoubleValue (500000));
+flowSizebps->SetAttribute ("Bound", DoubleValue (3000000));
 
   //flowSizebps->SetAttribute ("Min", DoubleValue (1000000));
   //flowSizebps->SetAttribute ("Max", DoubleValue (3000000));

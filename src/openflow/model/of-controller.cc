@@ -393,12 +393,13 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
     double sum = 0;
     for(vector<long int>::iterator it= lteFlowIDs.begin(); it != lteFlowIDs.end(); it++)
     {
-        if(pallflow->find(*it) == pallflow->end())
+        fmap::iterator fit = pallflow->find(*it);
+        if(fit == pallflow->end())
         {
             cout<<"find error in sumOldLteUtility"<<endl;
             exit(0);
         }
-        sum += (pallflow->find(*it)->second->utility);
+        sum += (fit->second->utility);
     }
     if(newLteWSum ==0)
         return sum;
@@ -496,6 +497,7 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
 
             for (unsigned int i = 0; i < userList.size(); i++) {
                 wifiSum += ww[i];
+                lteSum += lw[i];
                 if(ww[i] != 0)
                     ueCount ++;
 
@@ -509,9 +511,12 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
             }
             assert(discount >0.0001);
             */
+
+            /*
             for (unsigned int i = 0; i < userList.size(); i++) {
                 lteSum += lw[i];
             }
+            */
 
             *lteSumOut = lteSum;
 
@@ -584,7 +589,8 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                         u += uFlow;                         
                         assert(((pallflow->find(*Fit)->second->weight) * log(resourceW * ((pallflow->find(*Fit)->second->weight) * (pallflow->find(*Fit)->second->dSize) / userWW))) != 0);
                         //cout << "userww" << userWW << endl;
-                        assert(resourceW !=0);
+                        assert(userWW != 0);
+                        //assert(resourceW !=0);
                         assert(!isnan(resourceW));
                         assert(!isnan(uFlow));
                         assert((pallflow->find(*Fit)->second->dSize) !=0);
@@ -828,19 +834,17 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
                 }
             }
         }//for i
-
-        double lteSumO;
-
-        uAll += calcUtility(apIndex, &vv, plan, nflow, &lteSumO, 1);
+        //double lteSumO;
+        //uAll += calcUtility(apIndex, &vv, plan, nflow, &lteSumO, 1);
         delete[] plan;
 
     }//for every wifi ap
-    cout<<"uAll wifi part"<< uAll<<endl;
+    //cout<<"uAll wifi part"<< uAll<<endl;
 
-    double ulte = calcLteU(&lteFlowIDs);
+    //double ulte = calcLteU(&lteFlowIDs);
 
-    cout<<"uAll lte part"<< ulte<<endl;
-    uAll+= ulte;
+    //cout<<"uAll lte part"<< ulte<<endl;
+    //uAll+= ulte;
     fprintf(ulogFpR, "%.5f\n", uAll);
     cout<<"uAll random "<<uAll<<endl;
 
