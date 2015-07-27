@@ -550,10 +550,10 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
                 //exit(0);
 
                 if (wifiSum != 0) {
-                resourceW = ww[i] / wifiSum * approax[ueCount];
+                resourceW = (ww[i] / wifiSum) * approax[ueCount];
                 }
                 if (lteSum != 0) {
-                    resourceL = lw[i] / lteSum * (capMap->find(0)->second);
+                    resourceL = (lw[i] / lteSum) * (capMap->find(0)->second);
                 }
                 assert(!isinf(resourceW));
                 assert(!isinf(resourceL));
