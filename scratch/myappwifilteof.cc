@@ -21,6 +21,7 @@
 #include <map>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
 #include "ns3/lte-helper.h"
 #include "ns3/epc-helper.h"
 #include "ns3/core-module.h"
@@ -56,14 +57,34 @@ using std::endl;
 
 NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
 
-//<<<<<<< HEAD
+
 void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp, double next);
 void checkStartEnd(double&, double&, double, double);
-//=======
-//void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
+
 void  updateFlowStat(Ptr<ns3::ofi::MyController> controller, double next);
 
-//>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
+
+
+unsigned long int m_bytesTotal[5] = {0,0,0,0,0};
+const int INTERVAL=5;
+
+void
+ReceivedPacket ( std::string context, Ptr<const Packet> p, const Address& addr)
+{
+    m_bytesTotal[0] += p->GetSize ();
+    //cout<<context<<" "<<p->GetSize ()<<endl;
+}
+
+
+void Throughput () // in Mbps calculated every 2s 
+{ 
+  double mbps = (((m_bytesTotal[0] * 8.0f) / 1000000.0f)/(double)INTERVAL);
+  double time_tp = Simulator::Now ().GetSeconds (); 
+  cout << "time: " << time_tp <<"\t"<< "NS3 total Throughput: " << mbps <<"Mbps"<<endl; 
+  m_bytesTotal[0] = 0; 
+  Simulator::Schedule (Seconds (INTERVAL), &Throughput); 
+} 
+
 
 int
 main (int argc, char *argv[])
@@ -76,6 +97,11 @@ main (int argc, char *argv[])
 
   double simTime = 56.1;
   double distance = 1000.0;
+
+  for(int ii=0; ii<5; ii++)
+        m_bytesTotal[ii] = 0;
+
+
 
   // Command line arguments
   CommandLine cmd;
@@ -380,7 +406,8 @@ main (int argc, char *argv[])
   // Install and start applications on UEs and remote host
  
   //Ptr<Application> anApp;
-  double interval = 10;
+
+  double interval = INTERVAL;
   int nTotalFlSize = 0;
   uint16_t ulPort = 20000;
   ApplicationContainer ueApp;
@@ -402,6 +429,7 @@ main (int argc, char *argv[])
          nFlSize = flowSizebps->GetInteger();
          nTotalFlSize += nFlSize;
          checkStartEnd(dFlStart, dFlLen, simTime,interval);
+
 
     
          MyOnOffHelper appHelper ("ns3::UdpSocketFactory", brPort, InetSocketAddress(premoteHostAddr[0],brPort), brPort+1, 
@@ -431,22 +459,36 @@ main (int argc, char *argv[])
   }
   std::cout<<"Total Size  "<<nTotalFlSize<<std::endl;
   serverApps.Start (Seconds(0.1));
-
+/*
   Ptr<FlowMonitor> flowMonitor;
   FlowMonitorHelper flowHelper;
   flowMonitor = flowHelper.InstallAll();
+  */
+
+// Measure PacketSinks
+//21 is the first wifi AP
+//int ii=25;
+  for(int ii=25; ii<30; ii++)
+  {
+     char aa[10];
+     sprintf( aa, "%d", ii);
+     std::string sink = "/NodeList/"+std::string(aa)+"/ApplicationList/*/$ns3::PacketSink/Rx";
+     //std::string sink = "/NodeList/[25-29]/ApplicationList/*/$ns3::PacketSink/Rx";
+     Config::Connect (sink, MakeCallback(&ReceivedPacket) );
+  }
 
 //*/
   Simulator::Schedule(Seconds(interval), doSchedule, controller, mapFlowApp, interval);
   Simulator::Schedule(Seconds(interval/2.0f), updateFlowStat, controller,interval);
 
+  Simulator::Schedule (Seconds (interval/2.0f), &Throughput); 
   //AsciiTraceHelper asciihelper;
   //csmahelper.EnableAsciiAll(asciihelper.CreateFileStream("csma.tr"));
   //wifiPhy.EnableAsciiAll(asciihelper.CreateFileStream("wifi.tr"));
 
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
-  flowMonitor->SerializeToXmlFile("flowstat", true, true);
+ // flowMonitor->SerializeToXmlFile("flowstat", true, true);
   Simulator::Destroy();
   return 0;
 }
@@ -464,12 +506,8 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
      pApp->SetNetwork(fit->second->nOnNetwork);
      ++fit;
    }   
-//<<<<<<< HEAD
    Simulator::Schedule(Seconds(next), doSchedule, controller, pmapFlowApp, next);
-//=======
-  // Simulator::Schedule(Seconds(2.5),updateFlowStat , controller, true);
-  // Simulator::Schedule(Seconds(5), doSchedule, controller, pmapFlowApp);
-//>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
+
 }
 
 void updateFlowStat(Ptr<ns3::ofi::MyController> controller, double next)

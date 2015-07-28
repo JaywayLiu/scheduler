@@ -376,11 +376,7 @@ void MyController::updateAFlow(FlowInfoItem* pFlowItem, int pktcount, ns3::Time 
 
 void MyController::doScheduling(){
     std::cout<<std::endl<<"@ "<<Simulator::Now()<<" Call Scheduling" <<std::endl;
-//<<<<<<< HEAD
-    //updateFlowStat(true);
-    //pmyScheduler->makeDecisions(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
-    
-//=======
+
     updateFlowStat(false);
     if(stype ==0)
     {
@@ -400,7 +396,6 @@ void MyController::doScheduling(){
         exit(0);
     }
 
-//>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
     //std::cout<<"FlowMapSize "<<mapAllFlows.size()<<std::endl;
 }
 
@@ -948,13 +943,11 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
                 }
             }
         }//for i
-//<<<<<<< HEAD
 
         //double lteSumO;
 
-//=======
+
         //double lteSumO;
-//>>>>>>> 8daf09d5e86e3f5863dc77733bf7836a18eb2d7f
         //uAll += calcUtility(apIndex, &vv, plan, nflow, &lteSumO, 1);
         delete[] plan;
 
