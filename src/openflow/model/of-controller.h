@@ -24,7 +24,7 @@ namespace ns3 {
 
     class FlowInfoItem{
     public:
-       FlowInfoItem(sw_flow_key* flKey, int onntwk, int availte, int avilwifi, int user);
+       FlowInfoItem(sw_flow_key* flKey, int onntwk, int availte, int avilwifi, int user, int orgsize);
        ~FlowInfoItem();
 
        void updateSize(int pktcount, ns3::Time time);
@@ -45,6 +45,8 @@ namespace ns3 {
        ns3::Time  lasttime;
        double* pastsize;
        const int PACKETSIZE;
+       
+       int nOrgSize;
 
        double weight;
        int userIndex;
@@ -164,7 +166,8 @@ namespace ns3 {
 
       void setDefaultSINR();
 
-      void setOrgFlow(long int id, double start, double len, int size);
+      void setOrgFlow(long int id, long int id2, double start, double len, int size);
+
     private:
  
       std::map<int, int> mapAPCap;
@@ -179,7 +182,7 @@ namespace ns3 {
       std::map<int, double> mapSINR;
       std::map<int, double> mapWifiWt;
 
-      std::map<int, double> mapAPLoad;
+      std::map<long int, int> mapFlowIdSize;
 
       uint32_t maxUENumber;
 
@@ -190,8 +193,9 @@ namespace ns3 {
 
       uint16_t stype; //scheduler type
 
-            FILE* realUFp;
-            FILE* throughp;
+            FILE* realUThroughFp;
+            FILE* apInfoFp;
+            FILE* userInfoFp;
     };
   }
 }

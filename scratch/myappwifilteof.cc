@@ -141,7 +141,7 @@ main (int argc, char *argv[])
   Ptr<Node> remoteHost; 
   Ipv4Address* premoteHostAddr = new Ipv4Address [nWiFiAPs + 1];
 
-  Config::SetDefault("ns3::DropTailQueue::MaxPackets", UintegerValue(10000000));
+  Config::SetDefault("ns3::DropTailQueue::MaxPackets", UintegerValue(1000000000));
   CsmaHelper csmahelper;
   csmahelper.SetChannelAttribute ("DataRate", DataRateValue (50000000000));
   csmahelper.SetChannelAttribute ("Delay", TimeValue (NanoSeconds (1))); 
@@ -355,15 +355,17 @@ main (int argc, char *argv[])
   flowLenSeconds->SetAttribute ("Min", DoubleValue (3));
   flowLenSeconds->SetAttribute ("Max", DoubleValue (simTime));
 
-  //Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
-  Ptr<NormalRandomVariable> flowSizebps = CreateObject<NormalRandomVariable> ();
-  //ljw size random
-flowSizebps->SetAttribute ("Mean", DoubleValue (1000000));
-flowSizebps->SetAttribute ("Variance", DoubleValue (500000));
-flowSizebps->SetAttribute ("Bound", DoubleValue (3000000));
+  Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
+  flowSizebps->SetAttribute ("Min", DoubleValue (200000));
+  flowSizebps->SetAttribute ("Max", DoubleValue (2000000));
 
-  //flowSizebps->SetAttribute ("Min", DoubleValue (1000000));
-  //flowSizebps->SetAttribute ("Max", DoubleValue (3000000));
+  //ljw size random
+  //Ptr<NormalRandomVariable> flowSizebps = CreateObject<NormalRandomVariable> ();
+  //flowSizebps->SetAttribute ("Mean", DoubleValue (2000000));
+  //flowSizebps->SetAttribute ("Variance", DoubleValue (1000000));
+  //flowSizebps->SetAttribute ("Bound", DoubleValue (5000000));
+
+
   
 
   controller->setUENumber(nWiFiAPs * nUesPerWiFiAp);
@@ -401,7 +403,7 @@ flowSizebps->SetAttribute ("Bound", DoubleValue (3000000));
          nTotalFlSize += nFlSize;
          checkStartEnd(dFlStart, dFlLen, simTime,interval);
 
-         controller->setOrgFlow(0, dFlStart, dFlLen, nFlSize);
+    
          MyOnOffHelper appHelper ("ns3::UdpSocketFactory", brPort, InetSocketAddress(premoteHostAddr[0],brPort), brPort+1, 
                                   InetSocketAddress(premoteHostAddr[u/nUesPerWiFiAp+1],brPort+1));
          appHelper.SetConstantRate(nFlSize, 1024);
@@ -421,7 +423,8 @@ flowSizebps->SetAttribute ("Bound", DoubleValue (3000000));
          PacketSinkHelper wifiPacketSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), brPort+1));
          serverApps.Add (wifiPacketSinkHelper.Install (SinkServers.Get(u/nUesPerWiFiAp+1))); 
          brPort+=10;
-
+         
+         controller->setOrgFlow(nflid, nflid2, dFlStart, dFlLen, nFlSize);
          std::cout<<"Flow "<<nflid<<" "<<nflid2<<" from "<<dFlStart<<" till "<<dFlStart+dFlLen<<" size "<<nFlSize<<std::endl;
       }   
       ulPort+=1000;

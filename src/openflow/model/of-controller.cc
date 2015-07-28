@@ -97,7 +97,7 @@ void MyController::ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf
        int onnet=mapSwitchAP[GetPointer(swtch)], avlte=0, avwifi=mapSrcIPWifi[ntohl(key.flow.nw_src)];  
 
    
-       FlowInfoItem *pFlowItem = new FlowInfoItem(&key, onnet, avlte, avwifi, mapSrcIPUser[ntohl(key.flow.nw_src)]);
+       FlowInfoItem *pFlowItem = new FlowInfoItem(&key, onnet, avlte, avwifi, mapSrcIPUser[ntohl(key.flow.nw_src)], mapFlowIdSize[nflid]);
        mapAllFlows[nflid] = pFlowItem;
 
        std::cout<<"Create flow "<<pFlowItem->nFlowId<<" ";
@@ -112,16 +112,19 @@ void MyController::ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf
 void MyController::setSType(uint16_t tt){
    stype = tt;
    if(stype == 0){
-        realUFp = fopen("realU0.log", "w");
-        throughp = fopen("through0.log", "w");
+        realUThroughFp = fopen("realUThrough0.log", "w");
+        apInfoFp = fopen("apInfo0.log", "w");
+        userInfoFp = fopen("userInfo0.log", "w");
      }
      else if(stype == 1){
-        realUFp = fopen("realU1.log", "w");
-        throughp = fopen("through1.log", "w");
+        realUThroughFp = fopen("realUThrough1.log", "w");
+        apInfoFp = fopen("apInfo1.log", "w");
+        userInfoFp = fopen("userInfo1.log", "w");
      }
      else{
-        realUFp = fopen("realU2.log", "w");
-        throughp = fopen("through2.log", "w");
+        realUThroughFp = fopen("realUThrough2.log", "w");
+        apInfoFp = fopen("apInfo2.log", "w");
+        userInfoFp = fopen("userInfo2.log", "w");
      }
 }
 
@@ -137,17 +140,23 @@ MyController::~MyController(){
         delete mit->second;
         ++mit;
      }
-    fclose(realUFp);
-    fclose(throughp);
+    fclose(realUThroughFp);
+    fclose(apInfoFp);
+    fclose(userInfoFp);
 }
 
-
+struct MySize{
+       MySize():src(0),actual(0){}
+       double src;
+       double actual;
+    };
 
 void MyController::updateFlowStat(bool isPrint){
     //delete expired flows on switches, when all flows are removed on a switch, chain_timeout may not be called due to no inpacket
     sw_chain* pswchain;
     std::map<int, OpenFlowSwitchNetDevice* >::iterator swit = mapAPSwitch.begin();
     double realU = 0;
+    double sourceU = 0;
     while(swit != mapAPSwitch.end()){
         pswchain = swit->second->GetChain();
         List deleted = LIST_INITIALIZER (&deleted);
@@ -172,8 +181,16 @@ void MyController::updateFlowStat(bool isPrint){
         ++swit;
     }
     //then check flow
-    mapAPLoad.clear();
-    std::map<int, double>::iterator ldit;
+
+    
+    std::map<int, MySize> mapAPLoad;   
+    std::map<int, std::set<int> > mapAPUser;
+
+    std::map<int, MySize> mapUserLoad;
+    std::map<int, MySize> mapUserLteLoad;
+    std::map<int, MySize> mapUserWifiLoad;
+    std::map<int, MySize>::iterator ldit, userit;
+  
     std::map<long int, FlowInfoItem*>::iterator mit = mapAllFlows.begin();
     while(mit != mapAllFlows.end()){
        std::cout<<"Check flow "<<mit->first<<" "<<mit->second->nFlowId<<std::endl;
@@ -181,12 +198,64 @@ void MyController::updateFlowStat(bool isPrint){
        sw_flow* flow = chain_lookup(pswchain, &mit->second->flowKey);
        if(flow){
           updateAFlow(mit->second, flow->packet_count, ns3::Simulator::Now());
-          ldit = mapAPLoad.find(mit->second->nOnNetwork);
           realU+= (mit->second->weight) * log(mit->second->dSize);
-          if(ldit != mapAPLoad.end())
-             ldit->second += mit->second->dSize;
-          else
-             mapAPLoad[mit->second->nOnNetwork] = mit->second->dSize;
+          sourceU += (mit->second->weight) * log((double)mit->second->nOrgSize/8);
+
+          ldit = mapAPLoad.find(mit->second->nOnNetwork);
+          if(ldit != mapAPLoad.end()){
+             ldit->second.actual += mit->second->dSize*8;
+             ldit->second.src += mit->second->nOrgSize;
+             mapAPUser[ldit->first].insert(mit->second->userIndex);
+          }
+          else{
+             struct MySize aApSize;
+             aApSize.actual = mit->second->dSize*8;
+             aApSize.src  = mit->second->nOrgSize;
+             mapAPLoad[mit->second->nOnNetwork] = aApSize;
+
+             std::set<int> aSet;
+             aSet.insert(mit->second->userIndex);
+             mapAPUser[mit->second->nOnNetwork] = aSet;
+          }
+
+          userit = mapUserLoad.find(mit->second->userIndex);
+          if(userit != mapUserLoad.end()){
+             userit->second.actual += mit->second->dSize*8;
+             userit->second.src += mit->second->nOrgSize;
+          }
+          else{
+             struct MySize aUserSize;
+             aUserSize.actual = mit->second->dSize*8;
+             aUserSize.src  = mit->second->nOrgSize;
+             mapUserLoad[mit->second->userIndex] = aUserSize;
+          }
+
+          if(mit->second->nOnNetwork == 0){
+             userit = mapUserLteLoad.find(mit->second->userIndex);
+             if(userit != mapUserLteLoad.end()){
+                userit->second.actual += mit->second->dSize*8;
+             	userit->second.src += mit->second->nOrgSize;
+             }
+             else{
+                struct MySize aUserSize;
+                aUserSize.actual = mit->second->dSize*8;
+                aUserSize.src  = mit->second->nOrgSize;
+                mapUserLteLoad[mit->second->userIndex] = aUserSize;
+             }
+          }
+          else{
+             userit = mapUserWifiLoad.find(mit->second->userIndex);
+             if(userit != mapUserWifiLoad.end()){
+                userit->second.actual += mit->second->dSize*8;
+             	userit->second.src += mit->second->nOrgSize;
+             }
+             else{
+                struct MySize aUserSize;
+                aUserSize.actual = mit->second->dSize*8;
+                aUserSize.src  = mit->second->nOrgSize;
+                mapUserWifiLoad[mit->second->userIndex] = aUserSize;
+             }
+          }
           ++mit; 
        }
        else{
@@ -196,32 +265,75 @@ void MyController::updateFlowStat(bool isPrint){
           mapAllFlows.erase(mit++);
        }
     }
+
+    double dNow = Simulator::Now().GetSeconds();
     double dTotalLoad = 0;
     std::cout<<"Load Stat"<<std::endl;
-    ldit = mapAPLoad.begin();
-    while(ldit != mapAPLoad.end()){
-      dTotalLoad += ldit->second;
-      std::cout<<"AP "<<ldit->first<<" Load "<<ldit->second*8<<" bps "<<std::endl;
-      ++ldit;
+    for(uint16_t i=0; i<mapAPCap.size();i++){
+       ldit = mapAPLoad.find(i);
+       if(ldit != mapAPLoad.end()){
+          dTotalLoad += ldit->second.actual;
+          std::cout<<"AP "<<ldit->first<<" with "<<mapAPUser[ldit->first].size()<<" UEs "<<" Actual Load "<<ldit->second.actual<<" bps "<<" Src Load "<<ldit->second.src<<" bps"<<std::endl;
+          if(isPrint){
+              fprintf(apInfoFp, "@%.4f AP %d with %d UEs Load %.1f bps Src Load %.1f bps\n", dNow, ldit->first, mapAPUser[ldit->first].size(), ldit->second.actual, ldit->second.src);
+          }
+       }
+       else{
+          std::cout<<"AP "<<i<<" empty "<<std::endl;
+          if(isPrint){
+              fprintf(apInfoFp, "@%.4f AP %d empty\n", dNow, i);
+          }
+       }
     }
-    std::cout<<"Total Load "<<dTotalLoad*8<<" bps "<<std::endl;  
    
+    std::cout<<"Total Actual Load "<<dTotalLoad<<" bps ";  
+
     double dSrcLoad = 0;
-    double dNow = Simulator::Now().GetSeconds();
     for(uint16_t i=0; i<vecOrgFlow.size();i++){
         if(dNow >= vecOrgFlow[i].dStart && dNow <= vecOrgFlow[i].dStart + vecOrgFlow[i].dLen)
             dSrcLoad += vecOrgFlow[i].nSize;
     }
     std::cout<<"Total Src Load "<<dSrcLoad<<" bps "<<std::endl;
-   
+
+    if(isPrint){
+         fprintf(apInfoFp, "Total Src Load %.1f bps Total Actual Load %.1f bps\n\n", dSrcLoad, dTotalLoad);
+    }  
+
     cout<<"Real Utility: "<<realU<<endl;
 
     if(isPrint)
     {
-       fprintf(realUFp, "@%.4f with real U %.4f\n", dNow, realU);
-       fprintf(throughp, "@%.4f  src throuput %.4f bps real throuput %.4f bps \n", dNow, dSrcLoad, dTotalLoad*8);
+       fprintf(realUThroughFp, "@%.4f  src throuput %.1f bps real throuput %.1f bps source u %.4f real u %.4f \n", dNow, dSrcLoad, dTotalLoad, sourceU, realU);
     }
     
+    if(isPrint){
+       std::map<int, MySize>::iterator userit;
+       for(uint16_t i=0; i<maxUENumber;i++){
+          userit = mapUserLoad.find(i);
+          if(userit != mapUserLoad.end()){
+              fprintf(userInfoFp, "@%.4f user %d Total src %.1f bps actual %.1f bps ", dNow, i, userit->second.src, userit->second.actual);
+              userit = mapUserLteLoad.find(i);
+              if(userit != mapUserLteLoad.end()){
+                  fprintf(userInfoFp, "LTE src %.1f bps actual %.1f bps ", userit->second.src, userit->second.actual);
+              }
+              else{
+                  fprintf(userInfoFp, "LTE src %.1f bps actual %.1f bps ", -1.0, -1.0);
+              }
+              userit = mapUserWifiLoad.find(i);
+              if(userit != mapUserWifiLoad.end()){
+                  fprintf(userInfoFp, "WiFi src %.1f bps actual %.1f bps ", userit->second.src, userit->second.actual);
+              }
+              else{
+                  fprintf(userInfoFp, "WiFi src %.1f bps actual %.1f bps ", -1.0, -1.0);
+              }
+          }
+          else{
+              fprintf(userInfoFp, "@%.4f user %d %d", dNow, i, -1);
+          }
+          fprintf(userInfoFp, "\n");
+       }
+       fprintf(userInfoFp, "\n");
+    }
 }
  
 std::map<long int, FlowInfoItem*>* MyController::getAllFlowMap(){
@@ -229,13 +341,15 @@ std::map<long int, FlowInfoItem*>* MyController::getAllFlowMap(){
 }
 
 
-void MyController::setOrgFlow(long int id, double start, double len, int size){
+void MyController::setOrgFlow(long int id, long int id2, double start, double len, int size){
     OrgFlow aFlow; 
     aFlow.nId = id; 
     aFlow.dStart = start; 
     aFlow.dLen = len; 
     aFlow.nSize = size; 
     vecOrgFlow.push_back(aFlow);
+    mapFlowIdSize[id] = size;
+    mapFlowIdSize[id2] = size;
 }
 
 
@@ -829,9 +943,9 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
             }
         }//for i
 
-        double lteSumO;
+        //double lteSumO;
 
-        uAll += calcUtility(apIndex, &vv, plan, nflow, &lteSumO, 1);
+        //uAll += calcUtility(apIndex, &vv, plan, nflow, &lteSumO, 1);
         delete[] plan;
 
     }//for every wifi ap
@@ -1072,7 +1186,8 @@ void FlowScheduler::makeDecisionsEven(std::map<int, int>* papcap, std::map<long 
        }      
        ++flit;
    }
-   double dAve = mapAPSize[0]/mapAPSize.size();
+  
+
    std::map<int, double>::iterator minit, asit;
    asit = mapAPSize.begin(); 
    while(asit != mapAPSize.end()){
@@ -1080,7 +1195,10 @@ void FlowScheduler::makeDecisionsEven(std::map<int, int>* papcap, std::map<long 
        ++asit;
    }
 
-   while(mapAPSize.size()>1){      
+   double dAve; 
+   double dAvaiTotal  = mapAPSize[0];
+   while(mapAPSize.size()>1){   
+      dAve = dAvaiTotal/mapAPSize.size();   
       asit = minit = mapAPSize.begin();
       ++asit;
       while(asit != mapAPSize.end()){
@@ -1100,12 +1218,13 @@ void FlowScheduler::makeDecisionsEven(std::map<int, int>* papcap, std::map<long 
       std::cout<<"@Ave "<<dAve<<" transfer AP "<<minit->first<<" "<<dTransfer<<" of "<<minit->second<<std::endl;
       dTransfer = transfer2WiFi(*mapAPFlow[minit->first], dTransfer);
       mapAPSize.erase(minit);
-      dAve = (mapAPSize[0] - dTransfer)/mapAPSize.size();
+      dAvaiTotal -= dTransfer;
    }
+   std::cout<<"Remainning for LTE "<<dAvaiTotal<<std::endl;
 } 
 ///////////////////////////////////////////FlowScheduler/////////////////////////////////////////////////
 
-FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, int user):window(5), PACKETSIZE(1024){
+FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, int user, int size):window(2), PACKETSIZE(1024){
     flowKey.wildcards = key->wildcards;                                 // Wildcard fields
     flowKey.flow.in_port = key->flow.in_port;                                // Input switch port
     memcpy (flowKey.flow.dl_src, key->flow.dl_src, sizeof flowKey.flow.dl_src); // Ethernet source address.
@@ -1140,6 +1259,7 @@ FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, 
 
     weight = 1;
     userIndex = user;
+    nOrgSize = size;
 }
 
 FlowInfoItem::~FlowInfoItem(){
