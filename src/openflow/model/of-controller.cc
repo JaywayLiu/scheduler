@@ -268,7 +268,7 @@ void MyController::updateFlowStat(bool isPrint){
 
     double dNow = Simulator::Now().GetSeconds();
     double dTotalLoad = 0;
-    std::cout<<"Load Stat"<<std::endl;
+    std::cout<<"Load Stat AP "<<mapAPCap.size()<<std::endl;
     for(uint16_t i=0; i<mapAPCap.size();i++){
        ldit = mapAPLoad.find(i);
        if(ldit != mapAPLoad.end()){
@@ -1234,7 +1234,7 @@ void FlowScheduler::makeDecisionsEven(std::map<int, int>* papcap, std::map<long 
 } 
 ///////////////////////////////////////////FlowScheduler/////////////////////////////////////////////////
 
-FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, int user, int size):window(2), PACKETSIZE(1024){
+FlowInfoItem::FlowInfoItem(sw_flow_key* key, int onntwk, int avlte, int avwifi, int user, int size):window(1), PACKETSIZE(1024){
     flowKey.wildcards = key->wildcards;                                 // Wildcard fields
     flowKey.flow.in_port = key->flow.in_port;                                // Input switch port
     memcpy (flowKey.flow.dl_src, key->flow.dl_src, sizeof flowKey.flow.dl_src); // Ethernet source address.

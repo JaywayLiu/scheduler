@@ -67,7 +67,7 @@ namespace ns3 {
      approax[1] =2500000; //Bps
      approax[2] =1800000;
      approax[3] =1250000;
-     approax[4] =947500;
+     approax[4] =747500;
      approax[5] =687500;
      /*
       approax[0]= 0;

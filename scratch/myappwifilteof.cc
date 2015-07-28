@@ -61,7 +61,7 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
 void checkStartEnd(double&, double&, double, double);
 //=======
 //void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
-void  updateFlowStat(Ptr<ns3::ofi::MyController> controller);
+void  updateFlowStat(Ptr<ns3::ofi::MyController> controller, double next);
 
 //>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 
@@ -74,7 +74,7 @@ main (int argc, char *argv[])
   uint16_t nUesPerWiFiAp = 5;
   uint16_t stype=0;
 
-  double simTime = 50.1;
+  double simTime = 56.1;
   double distance = 1000.0;
 
   // Command line arguments
@@ -352,11 +352,11 @@ main (int argc, char *argv[])
   flowStartSeconds->SetAttribute ("Max", DoubleValue (simTime/2));
 
   Ptr<UniformRandomVariable> flowLenSeconds = CreateObject<UniformRandomVariable> ();
-  flowLenSeconds->SetAttribute ("Min", DoubleValue (3));
+  flowLenSeconds->SetAttribute ("Min", DoubleValue (4));
   flowLenSeconds->SetAttribute ("Max", DoubleValue (simTime));
 
   Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
-  flowSizebps->SetAttribute ("Min", DoubleValue (200000));
+  flowSizebps->SetAttribute ("Min", DoubleValue (1000000));
   flowSizebps->SetAttribute ("Max", DoubleValue (2000000));
 
   //ljw size random
@@ -380,7 +380,7 @@ main (int argc, char *argv[])
   // Install and start applications on UEs and remote host
  
   //Ptr<Application> anApp;
-  double interval = 5;
+  double interval = 10;
   int nTotalFlSize = 0;
   uint16_t ulPort = 20000;
   ApplicationContainer ueApp;
@@ -438,7 +438,7 @@ main (int argc, char *argv[])
 
 //*/
   Simulator::Schedule(Seconds(interval), doSchedule, controller, mapFlowApp, interval);
-  Simulator::Schedule(Seconds(interval/2.0f), updateFlowStat, controller);
+  Simulator::Schedule(Seconds(interval/2.0f), updateFlowStat, controller,interval);
 
   //AsciiTraceHelper asciihelper;
   //csmahelper.EnableAsciiAll(asciihelper.CreateFileStream("csma.tr"));
@@ -472,11 +472,11 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
 //>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 }
 
-void updateFlowStat(Ptr<ns3::ofi::MyController> controller)
+void updateFlowStat(Ptr<ns3::ofi::MyController> controller, double next)
 {
    std::cout<<"@"<<Simulator::Now()<<" Do updateFlowStat"<<std::endl;
    controller->updateFlowStat(true);
-   Simulator::Schedule(Seconds(5), updateFlowStat, controller);
+   Simulator::Schedule(Seconds(next), updateFlowStat, controller, next);
 }
 
 void checkStartEnd(double& start, double& len, double simtime, double interval){
