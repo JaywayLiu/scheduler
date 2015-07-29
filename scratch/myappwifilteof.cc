@@ -57,24 +57,33 @@ using std::endl;
 
 NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
 
-
+//<<<<<<< HEAD
 void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp, double next);
 void checkStartEnd(double&, double&, double, double);
+//=======
+//void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<Application> >& pmapFlowApp);
 
-void  updateFlowStat(Ptr<ns3::ofi::MyController> controller, double next);
+void  updateFlowStat(Ptr<ns3::ofi::MyController> controller);
 
-
-
-unsigned long int m_bytesTotal[5] = {0,0,0,0,0};
+unsigned long int m_bytesTotal[5];
 const int INTERVAL=5;
 
 void
-ReceivedPacket ( std::string context, Ptr<const Packet> p, const Address& addr)
+ReceivedPacket ( std::string context, Ptr<const Packet> p, const
+Address& addr)
 {
     m_bytesTotal[0] += p->GetSize ();
     //cout<<context<<" "<<p->GetSize ()<<endl;
 }
+/*
 
+void
+ReceivedPacket1 (std::string context, Ptr<const Packet> p, const
+Address& addr)
+{
+ m_bytesTotal += p->GetSize ();
+}
+*/
 
 void Throughput () // in Mbps calculated every 2s 
 { 
@@ -85,6 +94,7 @@ void Throughput () // in Mbps calculated every 2s
   Simulator::Schedule (Seconds (INTERVAL), &Throughput); 
 } 
 
+//>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 
 int
 main (int argc, char *argv[])
@@ -95,7 +105,7 @@ main (int argc, char *argv[])
   uint16_t nUesPerWiFiAp = 5;
   uint16_t stype=0;
 
-  double simTime = 56.1;
+  double simTime = 50.1;
   double distance = 1000.0;
 
   for(int ii=0; ii<5; ii++)
@@ -231,6 +241,8 @@ main (int argc, char *argv[])
   Ptr<PointToPointEpcHelper>  epcHelper = CreateObject<PointToPointEpcHelper> ();
   lteHelper->SetEpcHelper (epcHelper);
   epcHelper->Initialize ();
+  ///added ljw
+    lteHelper->SetSchedulerType ("ns3::PssFfMacScheduler"); 
 
   NetDeviceContainer enbLteDevs = lteHelper->InstallEnbDevice (enbNodes);
   NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice (ueNodes);
@@ -378,18 +390,18 @@ main (int argc, char *argv[])
   flowStartSeconds->SetAttribute ("Max", DoubleValue (simTime/2));
 
   Ptr<UniformRandomVariable> flowLenSeconds = CreateObject<UniformRandomVariable> ();
-  flowLenSeconds->SetAttribute ("Min", DoubleValue (4));
+  flowLenSeconds->SetAttribute ("Min", DoubleValue (3));
   flowLenSeconds->SetAttribute ("Max", DoubleValue (simTime));
-
+/*
   Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
-  flowSizebps->SetAttribute ("Min", DoubleValue (1000000));
+  flowSizebps->SetAttribute ("Min", DoubleValue (200000));
   flowSizebps->SetAttribute ("Max", DoubleValue (2000000));
-
+*/
   //ljw size random
-  //Ptr<NormalRandomVariable> flowSizebps = CreateObject<NormalRandomVariable> ();
-  //flowSizebps->SetAttribute ("Mean", DoubleValue (2000000));
-  //flowSizebps->SetAttribute ("Variance", DoubleValue (1000000));
-  //flowSizebps->SetAttribute ("Bound", DoubleValue (5000000));
+  Ptr<NormalRandomVariable> flowSizebps = CreateObject<NormalRandomVariable> ();
+  flowSizebps->SetAttribute ("Mean", DoubleValue (930000));
+  flowSizebps->SetAttribute ("Variance", DoubleValue (3.3e5*3.3e5));
+  flowSizebps->SetAttribute ("Bound", DoubleValue (2500000));
 
 
   
@@ -406,7 +418,6 @@ main (int argc, char *argv[])
   // Install and start applications on UEs and remote host
  
   //Ptr<Application> anApp;
-
   double interval = INTERVAL;
   int nTotalFlSize = 0;
   uint16_t ulPort = 20000;
@@ -425,10 +436,18 @@ main (int argc, char *argv[])
 
          dFlStart = flowStartSeconds->GetValue();
          dFlLen = flowLenSeconds->GetValue();
+         //dFlLen = 10;
          dFlLen = (dFlStart + dFlLen)>simTime?simTime-dFlStart-0.2:dFlLen;
          nFlSize = flowSizebps->GetInteger();
+         assert(nFlSize >=0);
+        // cout<<"nFlSize "<<nFlSize<<endl;
          nTotalFlSize += nFlSize;
          checkStartEnd(dFlStart, dFlLen, simTime,interval);
+
+
+
+
+
 
 
     
@@ -438,6 +457,7 @@ main (int argc, char *argv[])
          ueApp = appHelper.Install(ueNodes.Get(u));
          ueApp.Get(0)->SetStartTime(Seconds(dFlStart));
          ueApp.Get(0)->SetStopTime(Seconds(dFlStart+dFlLen));
+         //cout<<"app type id"<< ueApp.Get(0)->GetInstanceTypeId().GetUid() <<endl;;
          uint32_t srcIP = ueLteIpIfaces.GetAddress(u).Get();
          long int nflid = (((srcIP>>8)&255)*100 + (srcIP&255))*100000 + brPort;
          mapFlowApp[nflid] = ueApp.Get(0);
@@ -468,18 +488,18 @@ main (int argc, char *argv[])
 // Measure PacketSinks
 //21 is the first wifi AP
 //int ii=25;
-  for(int ii=25; ii<30; ii++)
-  {
-     char aa[10];
-     sprintf( aa, "%d", ii);
-     std::string sink = "/NodeList/"+std::string(aa)+"/ApplicationList/*/$ns3::PacketSink/Rx";
-     //std::string sink = "/NodeList/[25-29]/ApplicationList/*/$ns3::PacketSink/Rx";
-     Config::Connect (sink, MakeCallback(&ReceivedPacket) );
-  }
+for(int ii=25; ii<30; ii++)
+{
+    char aa[10];
+sprintf( aa, "%d", ii);
+std::string sink = "/NodeList/"+std::string(aa)+"/ApplicationList/*/$ns3::PacketSink/Rx";
+//std::string sink = "/NodeList/[25-29]/ApplicationList/*/$ns3::PacketSink/Rx";
+Config::Connect (sink, MakeCallback(&ReceivedPacket) );
+}
 
 //*/
   Simulator::Schedule(Seconds(interval), doSchedule, controller, mapFlowApp, interval);
-  Simulator::Schedule(Seconds(interval/2.0f), updateFlowStat, controller,interval);
+  Simulator::Schedule(Seconds(interval/2.0f), updateFlowStat, controller);
 
   Simulator::Schedule (Seconds (interval/2.0f), &Throughput); 
   //AsciiTraceHelper asciihelper;
@@ -506,15 +526,19 @@ void  doSchedule(Ptr<ns3::ofi::MyController> controller, std::map<long int, Ptr<
      pApp->SetNetwork(fit->second->nOnNetwork);
      ++fit;
    }   
+//<<<<<<< HEAD
    Simulator::Schedule(Seconds(next), doSchedule, controller, pmapFlowApp, next);
-
+//=======
+  // Simulator::Schedule(Seconds(2.5),updateFlowStat , controller, true);
+  // Simulator::Schedule(Seconds(5), doSchedule, controller, pmapFlowApp);
+//>>>>>>> bfc9bb7c228cd15613e578516bfebcdc4bb7419f
 }
 
-void updateFlowStat(Ptr<ns3::ofi::MyController> controller, double next)
+void updateFlowStat(Ptr<ns3::ofi::MyController> controller)
 {
    std::cout<<"@"<<Simulator::Now()<<" Do updateFlowStat"<<std::endl;
    controller->updateFlowStat(true);
-   Simulator::Schedule(Seconds(next), updateFlowStat, controller, next);
+   Simulator::Schedule(Seconds(5), updateFlowStat, controller);
 }
 
 void checkStartEnd(double& start, double& len, double simtime, double interval){

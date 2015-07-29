@@ -275,7 +275,8 @@ void MyController::updateFlowStat(bool isPrint){
           dTotalLoad += ldit->second.actual;
           std::cout<<"AP "<<ldit->first<<" with "<<mapAPUser[ldit->first].size()<<" UEs "<<" Actual Load "<<ldit->second.actual<<" bps "<<" Src Load "<<ldit->second.src<<" bps"<<std::endl;
           if(isPrint){
-              fprintf(apInfoFp, "@%.4f AP %d with %d UEs Load %.1f bps Src Load %.1f bps\n", dNow, ldit->first, mapAPUser[ldit->first].size(), ldit->second.actual, ldit->second.src);
+              //fprintf(apInfoFp, "@%.4f AP %d with %d UEs Load %.1f bps Src Load %.1f bps\n", dNow, ldit->first, mapAPUser[ldit->first].size(), ldit->second.actual, ldit->second.src);
+              fprintf(apInfoFp, "@%.4f AP %d with %ld UEs Load %.1f bps Src Load %.1f bps\n", dNow, ldit->first, mapAPUser[ldit->first].size(), ldit->second.actual, ldit->second.src);
           }
        }
        else{
