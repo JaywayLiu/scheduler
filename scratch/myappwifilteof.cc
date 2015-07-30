@@ -385,24 +385,39 @@ main (int argc, char *argv[])
   NoFLowPerUser->SetAttribute ("Min", DoubleValue (2));
   NoFLowPerUser->SetAttribute ("Max", DoubleValue (5));
 
+  /*
   Ptr<UniformRandomVariable> flowStartSeconds = CreateObject<UniformRandomVariable> ();
   flowStartSeconds->SetAttribute ("Min", DoubleValue (0.2));
-  flowStartSeconds->SetAttribute ("Max", DoubleValue (simTime/2));
+  //flowStartSeconds->SetAttribute ("Max", DoubleValue (simTime/2));
+  flowStartSeconds->SetAttribute ("Max", DoubleValue (4*simTime/5.0f));
+
+  */
+
+    Ptr<UniformRandomVariable> flowStartSeconds = CreateObject<UniformRandomVariable> ();
+  flowStartSeconds->SetAttribute ("Min", DoubleValue (2.5f));
+  flowStartSeconds->SetAttribute ("Max", DoubleValue (5.0f));
+
+  Ptr<UniformRandomVariable> flowStartSlot = CreateObject<UniformRandomVariable> ();
+  flowStartSeconds->SetAttribute ("Min", DoubleValue (0));
+  flowStartSeconds->SetAttribute ("Max", DoubleValue (9));
+
 
   Ptr<UniformRandomVariable> flowLenSeconds = CreateObject<UniformRandomVariable> ();
-  flowLenSeconds->SetAttribute ("Min", DoubleValue (3));
+  flowLenSeconds->SetAttribute ("Min", DoubleValue (13));
   flowLenSeconds->SetAttribute ("Max", DoubleValue (simTime));
-/*
+  
+  
   Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
-  flowSizebps->SetAttribute ("Min", DoubleValue (200000));
-  flowSizebps->SetAttribute ("Max", DoubleValue (2000000));
-*/
+  flowSizebps->SetAttribute ("Min", DoubleValue (150000));
+  flowSizebps->SetAttribute ("Max", DoubleValue (2500000));
+
+ /* 
   //ljw size random
   Ptr<NormalRandomVariable> flowSizebps = CreateObject<NormalRandomVariable> ();
-  flowSizebps->SetAttribute ("Mean", DoubleValue (930000));
-  flowSizebps->SetAttribute ("Variance", DoubleValue (3.3e5*3.3e5));
-  flowSizebps->SetAttribute ("Bound", DoubleValue (2500000));
-
+  flowSizebps->SetAttribute ("Mean", DoubleValue (1500000));
+  flowSizebps->SetAttribute ("Variance", DoubleValue (3.5e5*3.5e5));
+  flowSizebps->SetAttribute ("Bound", DoubleValue (2800000));
+*/
 
   
 
@@ -434,10 +449,10 @@ main (int argc, char *argv[])
       uint16_t brPort = ulPort;
       for(int i=0; i<nAppPerUser; i++) {    
 
-         dFlStart = flowStartSeconds->GetValue();
+         dFlStart = flowStartSeconds->GetValue() + (flowStartSlot->GetInteger() *5);
          dFlLen = flowLenSeconds->GetValue();
-         //dFlLen = 10;
-         dFlLen = (dFlStart + dFlLen)>simTime?simTime-dFlStart-0.2:dFlLen;
+         //dFlLen = 10 * ;
+         dFlLen = (dFlStart + dFlLen)>simTime ? simTime-dFlStart-0.2 : dFlLen;
          nFlSize = flowSizebps->GetInteger();
          assert(nFlSize >=0);
         // cout<<"nFlSize "<<nFlSize<<endl;
@@ -457,7 +472,7 @@ main (int argc, char *argv[])
          ueApp = appHelper.Install(ueNodes.Get(u));
          ueApp.Get(0)->SetStartTime(Seconds(dFlStart));
          ueApp.Get(0)->SetStopTime(Seconds(dFlStart+dFlLen));
-         //cout<<"app type id"<< ueApp.Get(0)->GetInstanceTypeId().GetUid() <<endl;;
+         //cout<<"app type id"<< ueApp.Get(0)-@>GetInstanceTypeId().GetUid() <<endl;;
          uint32_t srcIP = ueLteIpIfaces.GetAddress(u).Get();
          long int nflid = (((srcIP>>8)&255)*100 + (srcIP&255))*100000 + brPort;
          mapFlowApp[nflid] = ueApp.Get(0);
@@ -543,25 +558,27 @@ void updateFlowStat(Ptr<ns3::ofi::MyController> controller)
 
 void checkStartEnd(double& start, double& len, double simtime, double interval){
      Ptr<UniformRandomVariable> randomnb = CreateObject<UniformRandomVariable> ();
-     randomnb->SetAttribute ("Min", DoubleValue (0.1));
-     randomnb->SetAttribute ("Max", DoubleValue (interval/3));
+     randomnb->SetAttribute ("Min", DoubleValue (0.05));
+     randomnb->SetAttribute ("Max", DoubleValue (interval/2-0.05));
      double end = start+len;
 
-     //std::cout<<"Origin interval "<<interval<<" start "<<start<<" end "<<end;
      int t = (int)(start/interval);   
-     std::cout<<" start t "<<t<<" change to ";
-     if((start - t*interval)<interval/2){
+    // std::cout<<"Origin interval "<<t<<" start "<<start<<" end "<<end<<endl;;
+     //std::cout<<" start t "<<t<<" change to ";
+     if((start - t*interval)< (interval/2)){
         start = (t+0.5)*interval + randomnb->GetValue();
      }
      //std::cout<<start<<" ";
     
-     t = (int)(end/interval);
+     int tend = (int)(end/interval);
      //std::cout<<" end t "<<t<<" change to ";
-     if((end - t*interval)<interval/2){
-        end = (t+0.5)*interval + randomnb->GetValue();
+     if((end - tend*interval)<interval/2){
+        end = (tend+0.5)*interval + randomnb->GetValue();
         if(end>=simtime)
-          end = simtime - 0.2;
+          end = simtime - 0.1;
      }
+
+    // std::cout<<"Change interval "<<tend<<" start "<<start<<" end "<<end<<endl;
      //std::cout<<end<<" "<<std::endl;
      len = end - start;
 }
