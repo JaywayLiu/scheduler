@@ -121,11 +121,21 @@ void MyController::setSType(uint16_t tt){
         apInfoFp = fopen("apInfo1.log", "w");
         userInfoFp = fopen("userInfo1.log", "w");
      }
-     else{
+     else if(stype == 2){
         realUThroughFp = fopen("realUThrough2.log", "w");
         apInfoFp = fopen("apInfo2.log", "w");
         userInfoFp = fopen("userInfo2.log", "w");
      }
+    else if(stype == 3){
+        realUThroughFp = fopen("realUThrough3.log", "w");
+        apInfoFp = fopen("apInfo3.log", "w");
+        userInfoFp = fopen("userInfo3.log", "w");
+     }   
+   else
+    {
+        cout<<"arg error in setType"<<endl;
+        exit(0);
+    }
 }
 
 MyController::MyController() :stype(0){
@@ -391,6 +401,10 @@ void MyController::doScheduling(){
     {
     pmyScheduler->makeDecisionsEven(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
     }
+    else if(stype == 3)
+    {
+    pmyScheduler->makeDecisionsSimple(&mapAPCap, &mapAllFlows, &mapSINR, &mapWifiWt);
+    }
     else
     {
         cout<<"arg error in doScheduling"<<endl;
@@ -402,7 +416,7 @@ void MyController::doScheduling(){
 
 ///////////////////////////////////////////FlowScheduler/////////////////////////////////////////////////
 //
-//
+//$$
 
 
 
@@ -735,6 +749,7 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
 
 
             cerr << "u=" << u << endl;
+            //cout<<"ucalc size inside"<<uCalc.size()<<endl;
             return u;
         }
 
@@ -745,7 +760,7 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
         FlowInfoItem* fp = pallflow->find((*vp)[i])->second;
         if(up->find(i) == up->end())
         {
-            cout<<"find err in setUtility"<<endl;
+            cout<<"find err in setUtility"<< i <<endl;
             exit(0);
 
         }
@@ -753,6 +768,280 @@ double FlowScheduler::sumOldLteUtility(double newLteWSum)
     }
 
 }
+
+void FlowScheduler::getPosFromAllFlows(vector<long int>* vv, vector<long int>* flows, int* pos)
+{
+    int i=0;
+for (vector<long int>::iterator Fit = flows->begin(); Fit != flows->end(); Fit++, i++) {
+                    int npos = std::find(vv->begin(), vv->end(), *Fit) - vv->begin();
+                    assert(npos >=0);
+                    pos[i]=npos;
+}//for
+
+
+}
+
+
+ void setFlowsInConfig(int* pos, int* posValue, int nflow, int* currentConfig)
+{
+    for (int i=0; i<nflow; i++)
+    {
+    int a = posValue[i];
+    assert(a==0 || a==1);
+    cerr<<"###before"<<(*currentConfig);
+    if(a==1)
+    {
+    (*currentConfig) |= (a << pos[i]);
+    }
+
+    cerr<<"   after"<<(*currentConfig)<<endl;
+    /*
+    else
+    {
+        //assert((((*currentConfig) >>pos[i] ) & 1) ==0); 
+     (*currentConfig) &= (a << pos[i]);
+    }
+    */
+    }
+
+}
+
+double FlowScheduler::findMaxConfigSimple(int apIndex, unsigned int* result, int* nflowRe, double* lteSumP) {
+            double maxV = 0;
+            //double totalFlowSize =0;
+
+            int nflow = 0;
+            vector<long int>& vv = apToFlowSet.find(apIndex)->second;
+            cerr << apIndex << "  size of vv" << vv.size() << endl;
+            double lteAll =0;
+
+
+
+            for (vector<long int>::iterator it = vv.begin(); it != vv.end(); it++) {
+                nflow += 1;
+                //totalFlowSize += pallflow->find(*it)->second->dSize;
+            }
+            cout<<"nflow"<<nflow<<endl;
+            *nflowRe = nflow;
+
+            if (nflow == 0)
+                return 0;
+
+            int* re = new int[nflow];
+
+            //if all to lte
+            tran(0, re, nflow);
+            for(int i=0; i<nflow; i++)
+                assert(re[i] ==0);
+
+            uCalc.clear();
+            uMax.clear();
+            double baseValue = calcUtility(apIndex, &vv, re, nflow, &lteAll, 0);
+            uMax.swap(uCalc);
+
+
+            //double oldw = sumOldLteUtility(lteAll);
+            //cout<<"lteAll "<<lteAll<<" oldw:"<<oldw<<"baseV"<<baseValue<<endl;
+             maxV = baseValue;
+
+
+             map<int, set<int> >::iterator setit = apToUserSet.find(apIndex);
+
+             if(setit == apToUserSet.end())
+             {
+                 cout<<"can not find any user under ap in findMaxconfigSimple "<<apIndex<<endl;
+                 return 0;
+             }
+
+
+        //get a copy of the user list, need to delete later
+            set<int> userList = setit->second;
+            //double newValue = maxV+1;
+            int currentConfig = 0;
+            //double parValue=0;
+
+            double lteSumM =0;
+
+            while(!userList.empty()) 
+            {
+                //for every user in the set,  try to transfer to wifi, and generate a integer currentConfig, use cconfig to calc utility
+                //double newValueMax=0;
+                int innerConfigMax=0;
+                int maxUe =0;
+
+                //the max value in one iteration
+                double newValueMax=0;
+
+                map<int, double> uMaxM;
+                double lteSumMM =0;
+                for(set<int>::iterator sit = userList.begin(); sit != userList.end(); sit++)
+                {
+                    int currentConfigTemp = currentConfig;
+                    double lteSumC=0;
+                    int userI = *sit; 
+                    vector<long int> &flows = userFlowList.find(userI)->second;
+
+                    //add some flows
+                    int* pos = new int[flows.size()];
+                    int* posValue= new int[flows.size()];
+
+                    for(unsigned int k=0; k< flows.size(); k++)
+                        posValue[k] =1;
+
+                    getPosFromAllFlows(&vv, &flows, pos);
+                    setFlowsInConfig(pos, posValue, flows.size(), &currentConfigTemp);
+                    tran(currentConfigTemp, re, nflow);
+
+                    uCalc.clear();
+                    double newValueC = calcUtility(apIndex, &vv, re, nflow, &lteSumC, 0);
+
+                    //cout<<"inside newValueMax "<<newValueMax<<" maxV "<<maxV<<" "<<currentConfigTemp<<endl;
+                    if(newValueC > newValueMax)
+                    {
+                        innerConfigMax= currentConfigTemp;
+                        newValueMax= newValueC;
+                        lteSumMM = lteSumC;
+                        maxUe = userI;
+                        uMaxM.swap(uCalc);
+                    }
+                    delete[] pos;
+                    delete[] posValue;
+
+                }
+                //finalize the max
+
+                    //cout<<"outside newValueMax "<<newValueMax<<" maxV "<<maxV<<" "<<innerConfigMax<<endl;
+
+                if(newValueMax - maxV >0)
+                {
+                    currentConfig = innerConfigMax;
+                    userList.erase(maxUe);
+                    maxV = newValueMax;
+                    lteSumM = lteSumMM;
+
+                    //cout<<"newValueMax "<<newValueMax<<" maxV "<<maxV<<endl;
+                    assert(!uMaxM.empty());
+                    uMax.swap(uMaxM);
+
+                }
+                else
+                {
+                    break;
+                }
+            }//while
+
+           cerr<<"lteSumM"<<lteSumM<<endl; 
+            //try to move in flow level for the ones still in the set
+            cerr<<"finish while 1"<<endl;
+            //exit(0);
+
+           // cout<<"after while 1 currentConfig "<<currentConfig<<"  "<<maxV<<endl;
+             while(!userList.empty()) 
+            {
+
+               // int innerConfigMax=0;
+                int maxUe =0;
+                double ueMaxValue =0;
+                int ueMaxConfig=0;
+                double ueLteSum=0;
+
+                map<int, double> uMaxMM;
+                for(set<int>::iterator sit = userList.begin(); sit != userList.end(); sit++)
+                {
+                    int currentConfigTemp = currentConfig;
+                    int userI = *sit;
+
+                    vector<long int> &flows = userFlowList.find(userI)->second;
+
+                    int nUeFlow = flows.size();
+                    int* reUE = new int[nUeFlow];
+                    int* pos = new int[nUeFlow];
+
+                    getPosFromAllFlows(&vv, &flows, pos);
+
+                    double ininValueMax=0;
+                    int ininConfigMax=0;
+                    int ininlteSum=0;
+
+//find the max utility one, return the value, config and lteSum, 
+                    
+                    map<int, double> uMaxM;
+                 for (unsigned int i = 0; i <((unsigned int) (1 << nUeFlow)); i++) {
+                     double ininValue=0;
+                     double lteSumC;
+                     
+                    tran(i, reUE, nUeFlow);
+                    setFlowsInConfig(pos, reUE, nUeFlow, &currentConfigTemp);
+
+                    tran(currentConfigTemp, re, nflow);
+
+                    uCalc.clear();
+                    ininValue = calcUtility(apIndex, &vv, re, nflow, &lteSumC, 0);
+                    //cout<<"$" <<currentConfigTemp<<" "<<ininValue<<" "<<ininValueMax<<endl;  
+                    if(ininValue > ininValueMax)
+                        {
+                            ininConfigMax = currentConfigTemp;
+                            ininValueMax = ininValue;
+                            ininlteSum = lteSumC;
+                            uMaxM.swap(uCalc);
+
+                        }
+
+
+                 }
+                 assert(uMaxM.size()>0);
+
+                 if(ininValueMax > ueMaxValue)
+                 {
+                     maxUe = userI;
+                    ueMaxValue =  ininValueMax;
+                    ueMaxConfig = ininConfigMax; 
+                    ueLteSum = ininlteSum;
+                    uMaxMM.swap(uMaxM);
+
+                 }
+                 
+                 delete[] reUE;
+                 delete[] pos;
+
+
+
+
+                }//for all the ue, try, get the max
+
+                 assert(uMaxMM.size()>0);
+
+                if(ueMaxValue > maxV)
+                {
+                     assert(ueMaxConfig > currentConfig);
+                     currentConfig = ueMaxConfig;
+                    userList.erase(maxUe);
+                    maxV = ueMaxValue;
+                    lteSumM = ueLteSum; 
+                    this->uMax.swap(uMaxMM);
+
+                }
+                 userList.erase(maxUe);
+
+            }//while 2
+
+            cerr<<"after 2vv :"<<vv.size()<<endl;
+             //set utility
+            setUtility(&vv, &uMax);
+            //set lteSum
+            *lteSumP = lteSumM;
+
+            //set result
+            
+            *result = currentConfig;
+            cerr<<"after 2 currentConfig "<<currentConfig<<"  "<<maxV<<endl;
+
+            delete[] re;
+
+          //exit(0);
+            return maxV;
+}
+
 
         double FlowScheduler::findMaxConfig(int apIndex, unsigned int* result, int* nflowRe, double* lteSumP) {
             //unsigned int re = 0;
@@ -963,7 +1252,153 @@ void FlowScheduler::makeDecisionsRandom(std::map<int, int>* papcap, std::map<lon
     cout<<"uAll random "<<uAll<<endl;
 
 }
+        void FlowScheduler::makeDecisionsSimple(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow0,
+                std::map<int, double>* wifiW0, std::map<int, double>* lteW0)
+ {
 
+            wifiW = wifiW0;
+            lteW = lteW0;
+            capMap = papcap;
+            pallflow = pallflow0;
+
+            lteFlows.clear();
+            lteFlowIDs.clear();
+
+
+            std::set<int> toDoList;
+
+            double obMax = 0;
+            double uAll = 0;
+
+            for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++) {
+              it->second->utility = -1;
+            }
+            
+            //exit(0);
+            divideByCoverage();
+
+            for (map<int, set<int> >::iterator it = apToUserSet.begin(); it != apToUserSet.end(); it++) {
+                // cout<<"pushed value o:"<<it->first<<endl;
+                if ((it->first) != 0) {
+                    //toDoList.push_back(it->first);
+                    int a = it->first;
+                    toDoList.insert(a);
+                }
+            }
+
+            cout << "to size" << toDoList.size() << endl;
+            //check info
+
+
+            unsigned int maxConfig = 0;
+            unsigned int maxConfigF = 0;
+            int maxAPIndex = 0;
+            int nflow = 0;
+            int nflowF =0;
+            //std::map<int, FlowInfoItem*> cflow;
+            while (!toDoList.empty()) {
+                maxAPIndex = 0;
+                obMax = 0;
+                maxConfig = 0;
+
+
+                double lteSumM =0;
+                double lteSumC =0;
+                for (set<int>::iterator tit = toDoList.begin(); tit != toDoList.end(); tit++) {
+		//for every AP, call the function findMaxConfig to find the configuration
+                    double v = findMaxConfigSimple(*tit, &maxConfig, &nflow, &lteSumC);
+
+                    cout << *tit << " maxConfig "<<maxConfig <<"  " <<nflow<<"  "<<v<< endl;
+                    if (v < 0) {
+                        //toDoList.erase(*it);
+                        cerr << *tit << " v negative" << endl;
+                        continue;
+
+                    }
+                    if (v > obMax) {
+                        obMax = v;
+                        maxAPIndex = *tit;
+                        lteSumM = lteSumC;
+                        maxConfigF = maxConfig;
+                                                ///cout<<"maxAPIndex"<<maxAPIndex<<"maxConfigF"<<maxConfigF<<endl;
+                        nflowF = nflow;
+                    }//if
+                }//for
+
+                //cerr << "nflow *" << nflow << endl;
+                int* re = new int[nflowF];
+                for(int ii=0; ii<nflowF; ii++)
+                    re[ii] = -1;
+                //std::fill(re, re+sizeof(re), -1);
+                
+                //translate the schedule
+                tran(maxConfigF, re, nflowF);
+
+                vector<long int>& vv = apToFlowSet.find(maxAPIndex)->second;
+                int jj = 0;
+
+                for (vector<long int>::iterator it = vv.begin(); it != vv.end(); it++, jj++) {
+                        fmap::iterator fit = pallflow->find(*it);
+                        if(fit == pallflow->end())
+                        {
+                            cout<<"error find in make decision"<<endl;
+                            exit(0);
+                        }
+                    if (re[jj] == 0) {
+                        
+                        fit->second->nOnNetwork = fit->second->nAvailLTEBS;
+                        int userI = fit->second->userIndex;
+                        if(lteW->find(userI) == lteW->end())
+                        {
+                            cout<<"error find lteW"<<endl;
+                            exit(0);
+                        }
+                        lteFlows[userI] = lteW->find(userI)->second;
+                        lteFlowIDs.push_back(*it);
+
+                    } else if (re[jj] == 1) {
+                        fit->second->nOnNetwork = fit->second->nAvailWiFiAP;
+
+                    }
+                    else
+                    {
+                        cout<<"re value error "<<jj <<" "<<*it<<" "<<re[jj]<<endl;
+                        cout<<"maxconig "<<maxConfigF<<" nflow "<<nflowF<<endl;
+                        exit(0);
+                    }
+                }
+
+                updateOldUtility(lteSumM);
+
+                delete[] re;
+
+                cout << "###done " << maxAPIndex << " " << maxConfig <<obMax<< endl;
+                //toDoList.erase( std::remove( toDoList.begin(), toDoList.end(), maxAPIndex ), toDoList.end() );
+                set<int>::iterator sit = toDoList.find(maxAPIndex);
+                cerr << *sit << endl;
+                toDoList.erase(toDoList.find(maxAPIndex));
+                //remove 
+                //		    toDoList.remove(maxAPIndex);
+                //cout<<"todolist"<<toDoList.size()<<endl;
+
+            }//while
+            cerr << "decision all made" << endl;
+
+           
+
+            for (std::map<long int, FlowInfoItem*>::iterator it = pallflow->begin(); it != pallflow->end(); it++) {
+                assert(it->second->utility >0);
+                uAll += it->second->utility;
+
+            } 
+            cout<<"uAll = "<<uAll<<endl;
+            fprintf(ulogFp, "%.5f\n", uAll);
+            //remove apMax from the toToList
+
+            //for the next iteration, some flows are set to LTE already, so 
+
+        }
+	
 
         ///std::map<int, FlowInfoItem*>* pallflow 
         ///int is the flow ID, FlowInfoItem is the pointer to the flow

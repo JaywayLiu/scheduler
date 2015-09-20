@@ -88,6 +88,8 @@ namespace ns3 {
        }
        void makeDecisions(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt);
 
+       void makeDecisionsSimple(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt);
+
        //the dry run option enable user to call it without changing the real scheduling, only print the utility value
        void makeDecisionsRandom(std::map<int, int>* papcap, std::map<long int, FlowInfoItem*>* pallflow, std::map<int, double>* psinr, std::map<int, double>* pwifiwt, int dryrun); 
 
@@ -100,9 +102,15 @@ namespace ns3 {
             void divideByCoverage();
             double sumAllLTEWeights();
             double findMaxConfig(int apIndex, unsigned int* result, int* nflowRe, double* lteSumP);
+            double findMaxConfigSimple(int apIndex, unsigned int* result, int* nflowRe, double* lteSumP);
+
             double calcUtility(int apIndex, vector<long int>*vv, int* re, int nflow, double* lteSum, bool isWiFiOnly);
 
             void setUtility(vector<long int>* vp, map<int, double>* up);
+
+                    void getPosFromAllFlows(vector<long int>* vv, vector<long int>* flows, int* pos);
+                    
+           // void setFlowsInConfig(int* pos, int* posValue, int* currentConfig);
 
             //this is for updating the lte flow utility once more flows are assigned to lte
             void updateOldUtility(double lteSumF);

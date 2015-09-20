@@ -393,6 +393,8 @@ main (int argc, char *argv[])
 
   */
 
+  /*
+
     Ptr<UniformRandomVariable> flowStartSeconds = CreateObject<UniformRandomVariable> ();
   flowStartSeconds->SetAttribute ("Min", DoubleValue (2.5f));
   flowStartSeconds->SetAttribute ("Max", DoubleValue (5.0f));
@@ -400,17 +402,22 @@ main (int argc, char *argv[])
   Ptr<UniformRandomVariable> flowStartSlot = CreateObject<UniformRandomVariable> ();
   flowStartSeconds->SetAttribute ("Min", DoubleValue (0));
   flowStartSeconds->SetAttribute ("Max", DoubleValue (9));
+  */
+  Ptr<UniformRandomVariable> flowStartSeconds = CreateObject<UniformRandomVariable> ();
+  flowStartSeconds->SetAttribute ("Min", DoubleValue (0.2));
+  flowStartSeconds->SetAttribute ("Max", DoubleValue (simTime/2));
 
 
   Ptr<UniformRandomVariable> flowLenSeconds = CreateObject<UniformRandomVariable> ();
-  flowLenSeconds->SetAttribute ("Min", DoubleValue (13));
+  flowLenSeconds->SetAttribute ("Min", DoubleValue (4));
   flowLenSeconds->SetAttribute ("Max", DoubleValue (simTime));
   
   
   Ptr<UniformRandomVariable> flowSizebps = CreateObject<UniformRandomVariable> ();
-  flowSizebps->SetAttribute ("Min", DoubleValue (150000));
-  flowSizebps->SetAttribute ("Max", DoubleValue (2500000));
-
+ // flowSizebps->SetAttribute ("Min", DoubleValue (150000));
+  //flowSizebps->SetAttribute ("Max", DoubleValue (2500000));
+  flowSizebps->SetAttribute ("Min", DoubleValue (50000));
+  flowSizebps->SetAttribute ("Max", DoubleValue (3000000));
  /* 
   //ljw size random
   Ptr<NormalRandomVariable> flowSizebps = CreateObject<NormalRandomVariable> ();
@@ -448,16 +455,18 @@ main (int argc, char *argv[])
       int nAppPerUser = NoFLowPerUser->GetInteger();
       uint16_t brPort = ulPort;
       for(int i=0; i<nAppPerUser; i++) {    
-
-         dFlStart = flowStartSeconds->GetValue() + (flowStartSlot->GetInteger() *5);
+  dFlStart = flowStartSeconds->GetValue();
+         //dFlStart = flowStartSeconds->GetValue() + (flowStartSlot->GetInteger() *5);
+         //dFlStart = 0.1; 
          dFlLen = flowLenSeconds->GetValue();
          //dFlLen = 10 * ;
          dFlLen = (dFlStart + dFlLen)>simTime ? simTime-dFlStart-0.2 : dFlLen;
          nFlSize = flowSizebps->GetInteger();
+         //nFlSize = 500000;
          assert(nFlSize >=0);
         // cout<<"nFlSize "<<nFlSize<<endl;
          nTotalFlSize += nFlSize;
-         checkStartEnd(dFlStart, dFlLen, simTime,interval);
+         //checkStartEnd(dFlStart, dFlLen, simTime,interval);
 
 
 
